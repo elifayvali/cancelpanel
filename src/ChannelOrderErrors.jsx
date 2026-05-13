@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
-  AlertTriangle,
   Calendar,
   ChevronDown,
   ChevronLeft,
@@ -13,9 +12,9 @@ import {
   Mail,
   RefreshCw,
   Search,
-  X,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { HataDetayPanel } from './HataDetayPanel'
 import './ChannelOrderErrors.css'
 
 /**
@@ -1014,78 +1013,19 @@ function DetailModal({ row, onClose }) {
   if (!row) return null
 
   const typeId = row._typeId ?? MAIL_TYPES[0].id
-
-  const entries = Object.entries(row).filter(([k]) => k !== '_typeId')
-  const longKeys = new Set(entries.filter(([, v]) => typeof v === 'string' && v.length > 80).map(([k]) => k))
-  const shortEntries = entries.filter(([k]) => !longKeys.has(k))
-  const longEntries = entries.filter(([k]) => longKeys.has(k))
+  const dateVal = row.failedAt || row.occurredAt || row.detectedAt || row.mailedAt
+  const tarih = fmtDate(dateVal)
 
   return (
-    <div className="coe-modalBackdrop" role="presentation" onClick={onClose}>
-      <div className="coe-modal" role="dialog" aria-modal="true" aria-labelledby="coe-modal-title" onClick={(e) => e.stopPropagation()}>
-        <div className="coe-modal__head">
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 id="coe-modal-title" className="coe-modal__titleRow">
-              <AlertTriangle size={16} color="#f43f5e" /> Hata Detayı
-            </h3>
-            <p className="coe-modal__sub">{row.orderDcid ?? row.id ?? row.mailId ?? '—'}</p>
-            <div className="coe-modal__summary">
-              <SourceBadge source={buildErrorSource(typeId, row)} />
-              <p className="coe-modal__summaryText">{buildErrorMessage(typeId, row)}</p>
-            </div>
-          </div>
-          <IconButton onClick={onClose} title="Kapat">
-            <X size={16} />
-          </IconButton>
-        </div>
-
-        <div className="coe-modal__body">
-          <section>
-            <h4 className="coe-modal__sectionTitle">Alanlar</h4>
-            <dl className="coe-modalDl">
-              {shortEntries.map(([k, v]) => (
-                <div key={k}>
-                  <dt>{k}</dt>
-                  <dd>
-                    {Array.isArray(v) ? (
-                      v.join(', ')
-                    ) : v == null ? (
-                      <span className="coe-nullText">null</span>
-                    ) : typeof v === 'object' ? (
-                      <code>{JSON.stringify(v)}</code>
-                    ) : k.toLowerCase().includes('at') || k.toLowerCase().endsWith('date') ? (
-                      fmtDate(v)
-                    ) : (
-                      String(v)
-                    )}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-          {longEntries.length > 0 && (
-            <section>
-              <h4 className="coe-modal__sectionTitle">Uzun Alanlar</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {longEntries.map(([k, v]) => (
-                  <div key={k}>
-                    <div className="coe-modal__sectionTitle" style={{ marginBottom: 4 }}>
-                      {k}
-                    </div>
-                    <pre className="coe-modalPre">{String(v)}</pre>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-        <div className="coe-modal__footer">
-          <button type="button" className="coe-btnPrimary" onClick={onClose}>
-            Kapat
-          </button>
-        </div>
-      </div>
-    </div>
+    <HataDetayPanel
+      dcid={String(row.orderDcid ?? row.id ?? '—')}
+      platformId={String(row.platformId ?? '—')}
+      kanal={String(row.channel ?? '—')}
+      marka={String(row.brand ?? '—')}
+      tarih={tarih}
+      hataMesaji={buildErrorMessage(typeId, row)}
+      onClose={onClose}
+    />
   )
 }
 

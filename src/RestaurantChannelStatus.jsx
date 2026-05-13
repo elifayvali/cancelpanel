@@ -1,4 +1,5 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { HataDetayPanel } from './HataDetayPanel'
 import { buildDashboardJson, dashboardJsonToString } from './channelDashboardModel'
 import { CHANNEL_LABELS } from './channelLabels'
 import { mergeExcelFiles } from './excelImport'
@@ -1785,92 +1786,15 @@ export default function RestaurantChannelStatus() {
       </section>
 
       {closeLogPopupOpen && selectedRestaurantRow && selectedRowHataDetay && (
-        <div
-          className="rkd-close-log-modal"
-          role="presentation"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setCloseLogPopupOpen(false)
-          }}
-        >
-          <section
-            className="rkd-close-log-modal__panel rkd-hata-detay-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="rkd-hata-detay-title"
-          >
-            <header className="rkd-hata-detay__header">
-              <div className="rkd-hata-detay__title-row">
-                <span className="rkd-hata-detay__icon" aria-hidden>
-                  !
-                </span>
-                <h3 id="rkd-hata-detay-title" className="rkd-hata-detay__title">
-                  Hata Detayı
-                </h3>
-              </div>
-              <button
-                type="button"
-                className="rkd-close-log-modal__close"
-                onClick={() => setCloseLogPopupOpen(false)}
-                aria-label="Kapat"
-              >
-                ×
-              </button>
-            </header>
-
-            <div className="rkd-hata-detay__scroll">
-              <div className="rkd-hata-detay__grid">
-                <div className="rkd-hata-detay__field">
-                  <div className="rkd-hata-detay__field-label">SİPARİŞ DCID</div>
-                  <div className="rkd-hata-detay__field-value rkd-hata-detay__field-value--pill">
-                    {selectedRowHataDetay.dcid}
-                  </div>
-                </div>
-                <div className="rkd-hata-detay__field">
-                  <div className="rkd-hata-detay__field-label">PLATFORM ID</div>
-                  <div className="rkd-hata-detay__field-value rkd-hata-detay__field-value--pill">
-                    {selectedRowHataDetay.platformId}
-                  </div>
-                </div>
-                <div className="rkd-hata-detay__field">
-                  <div className="rkd-hata-detay__field-label">KANAL</div>
-                  <div className="rkd-hata-detay__field-value rkd-hata-detay__field-value--plain">
-                    {selectedRowHataDetay.kanal}
-                  </div>
-                </div>
-                <div className="rkd-hata-detay__field">
-                  <div className="rkd-hata-detay__field-label">MARKA</div>
-                  <div className="rkd-hata-detay__field-value rkd-hata-detay__field-value--plain">
-                    {selectedRowHataDetay.marka}
-                  </div>
-                </div>
-                <div className="rkd-hata-detay__field rkd-hata-detay__field--full">
-                  <div className="rkd-hata-detay__field-label">SİPARİŞ TARİHİ</div>
-                  <div className="rkd-hata-detay__field-value rkd-hata-detay__field-value--plain">
-                    {selectedRowHataDetay.tarih}
-                  </div>
-                </div>
-              </div>
-
-              <div className="rkd-hata-detay__error-box">
-                <h4 className="rkd-hata-detay__error-title">Hata Mesajı</h4>
-                <p className="rkd-hata-detay__error-text">{selectedRowHataDetay.hataMesaji}</p>
-              </div>
-
-              <div className="rkd-hata-detay__info-box">
-                <p className="rkd-hata-detay__info-lead">
-                  Yukarıdaki siparişte belirtilen ürünler tanım hatası sebebiyle eşleştirilememiştir. Sipariş eksik
-                  içerikle devam edecektir. Kontrollerinizi rica ederiz.
-                </p>
-                <p className="rkd-hata-detay__info-subtitle">Hata Sebepleri:</p>
-                <ul className="rkd-hata-detay__info-list">
-                  <li>Kanalın ilettiği Product id ile CRM ürün tanımı eşleşmiyor olabilir.</li>
-                  <li>CRM&apos;de ilgili ürün pasif olabilir.</li>
-                  <li>CRM&apos;de ilgili ürün hiç tanımlanmamış olabilir.</li>
-                </ul>
-              </div>
-            </div>
-          </section>
-        </div>
+        <HataDetayPanel
+          dcid={selectedRowHataDetay.dcid}
+          platformId={selectedRowHataDetay.platformId}
+          kanal={selectedRowHataDetay.kanal}
+          marka={selectedRowHataDetay.marka}
+          tarih={selectedRowHataDetay.tarih}
+          hataMesaji={selectedRowHataDetay.hataMesaji}
+          onClose={() => setCloseLogPopupOpen(false)}
+        />
       )}
 
       <footer className="rkd-footer">
