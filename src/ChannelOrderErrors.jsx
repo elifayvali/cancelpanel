@@ -62,37 +62,40 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100]
 const MAIL_TYPES = [
   {
     id: 'order-inject-error',
-    title: 'OrderInject Error',
-    subtitle: 'Mutfağa Gönderilememe',
+    title: 'Ürün Mutfağa Gönderilemedi',
+    subtitle: '',
     endpoint: '/api/mail-logs/order-inject-errors',
     dateField: 'failedAt',
     accent: 'rose',
   },
   {
     id: 'main-product-not-found',
-    title: 'Main Product not found',
-    subtitle: 'Ana ürün eşleşmedi',
+    title: 'Ana Ürün Eşleşmedi',
+    subtitle: '',
     endpoint: '/api/mail-logs/main-product-not-found',
     dateField: 'occurredAt',
     accent: 'amber',
   },
   {
     id: 'sub-product-not-found',
-    title: 'SubProduct not found',
-    subtitle: 'Alt ürün / opsiyon eşleşmedi',
+    title: 'Alt ürün/Opsiyon Bulunamadı',
+    subtitle: '',
     endpoint: '/api/mail-logs/sub-product-not-found',
     dateField: 'occurredAt',
     accent: 'orange',
   },
   {
     id: 'remote-code-null',
-    title: 'Remote Code null',
-    subtitle: 'Master data eksik mapping',
+    title: 'Kanal Eksik/Hatalı Mapping',
+    subtitle: '',
     endpoint: '/api/mail-logs/remote-code-null',
     dateField: 'detectedAt',
     accent: 'sky',
   },
 ]
+
+/** Filtre dropdown’u: tablodaki `buildErrorSource` değerleriyle birebir eşleşir */
+const HATA_KAYNAGI_FILTER_OPTIONS = ['CRM', 'Platform', 'Platform / CRM']
 
 function fmtDate(v) {
   if (!v) return '—'
@@ -313,6 +316,14 @@ function getProductIdForRow(row, typeId) {
   }
 }
 
+/** @param {Record<string, unknown>} row @param {string} typeId @param {string[] | undefined} sources */
+function passesErrorSources(row, typeId, sources) {
+  const ss = sources && sources.length > 0
+  if (!ss) return true
+  const src = buildErrorSource(typeId, row)
+  return sources.includes(src)
+}
+
 /** @param {Record<string, unknown>} row @param {string[] | undefined} brands @param {string[] | undefined} channels */
 function passesBrandChannel(row, brands, channels) {
   const bs = brands && brands.length > 0
@@ -386,7 +397,7 @@ function rowMatchesChannelOrderSearch(row, typeId, rawQuery) {
 
 /**
  * @param {string} typeId
- * @param {{ from?: string; to?: string; q?: string; brands?: string[]; channels?: string[]; productCodeQuery?: string }} params
+ * @param {{ from?: string; to?: string; q?: string; brands?: string[]; channels?: string[]; errorSources?: string[]; productCodeQuery?: string }} params
  */
 function filterMockItemsByParams(typeId, params) {
   const dateField = getDateFieldForType(typeId)
@@ -397,13 +408,14 @@ function filterMockItemsByParams(typeId, params) {
     items = items.filter((x) => rowMatchesChannelOrderSearch(x, typeId, params.q))
   }
   items = items.filter((row) => passesBrandChannel(row, params.brands, params.channels))
+  items = items.filter((row) => passesErrorSources(row, typeId, params.errorSources))
   items = items.filter((row) => passesProductCodeQuery(row, typeId, params.productCodeQuery))
   return items.map((row) => ({ ...row, _typeId: typeId }))
 }
 
 /**
  * @param {string[]} selectedTypeIds
- * @param {{ from?: string; to?: string; q?: string; brands?: string[]; channels?: string[]; productCodeQuery?: string }} params
+ * @param {{ from?: string; to?: string; q?: string; brands?: string[]; channels?: string[]; errorSources?: string[]; productCodeQuery?: string }} params
  */
 function mergeMockFilteredRows(selectedTypeIds, params) {
   let merged = []
@@ -417,7 +429,7 @@ function mergeMockFilteredRows(selectedTypeIds, params) {
 /**
  * Mock: sayfalama olmadan tüm satırlar (Excel export).
  * @param {string[]} selectedTypeIds
- * @param {{ from?: string; to?: string; q?: string; brands?: string[]; channels?: string[]; productCodeQuery?: string }} params
+ * @param {{ from?: string; to?: string; q?: string; brands?: string[]; channels?: string[]; errorSources?: string[]; productCodeQuery?: string }} params
  */
 async function fetchMockMergedMailLogsAll(selectedTypeIds, params) {
   await new Promise((r) => setTimeout(r, 150))
@@ -427,7 +439,7 @@ async function fetchMockMergedMailLogsAll(selectedTypeIds, params) {
 /**
  * API: tüm sayfaları çekip birleştirir (export veya istemci tarafı sayfalama için).
  * @param {string[]} selectedTypeIds
- * @param {{ from?: string; to?: string; q?: string; brands?: string[]; channels?: string[]; productCodeQuery?: string }} params
+ * @param {{ from?: string; to?: string; q?: string; brands?: string[]; channels?: string[]; errorSources?: string[]; productCodeQuery?: string }} params
  */
 async function fetchApiMergedMailLogsAllRows(selectedTypeIds, params, apiBase, authHeader, signal) {
   const pageSize = 500
@@ -458,6 +470,7 @@ async function fetchApiMergedMailLogsAllRows(selectedTypeIds, params, apiBase, a
   }
   let merged = chunks.flat()
   merged = merged.filter((r) => passesBrandChannel(r, params.brands, params.channels))
+  merged = merged.filter((r) => passesErrorSources(r, r._typeId, params.errorSources))
   merged = merged.filter((r) => passesProductCodeQuery(r, r._typeId, params.productCodeQuery))
   if (params.q && String(params.q).trim()) {
     merged = merged.filter((r) =>
@@ -480,7 +493,7 @@ function exportChannelErrorsToExcel(rows) {
     return {
       Marka: row.brand ?? '',
       Kanal: row.channel ?? '',
-      'Hata tipi': typeMeta?.subtitle ?? typeMeta?.title ?? '',
+      'Hata tipi': typeMeta?.title || typeMeta?.subtitle || '',
       'Hata Kaynağı': buildErrorSource(typeId, row),
       'Ürün Kodu': String(getProductIdForRow(row, row._typeId ?? MAIL_TYPES[0].id) ?? ''),
       'Hata Mesajı Detayı': buildErrorMessage(typeId, row),
@@ -582,7 +595,11 @@ function ReasonTypeMultiDropdown({ value, onChange }) {
       {open ? (
         <div className="coe-dd__panel" role="listbox" aria-label="Hata sebebi seçenekleri">
           {MAIL_TYPES.map((t) => (
-            <label key={t.id} className="coe-dd__row coe-dd__row--titleOnly" title={`${t.title} — ${t.subtitle}`}>
+            <label
+              key={t.id}
+              className="coe-dd__row coe-dd__row--titleOnly"
+              title={t.subtitle ? `${t.title} — ${t.subtitle}` : t.title}
+            >
               <input type="checkbox" checked={value.includes(t.id)} onChange={() => toggle(t.id)} />
               <span className={`coe-tab__dot coe-dot--${t.accent}`} aria-hidden />
               <span className="coe-dd__title coe-dd__title--plain">{t.title}</span>
@@ -666,6 +683,7 @@ function StringMultiCheckDropdown({ label, options, value, onChange, nounMany, n
  *   selectedTypeIds: string[]
  *   selectedBrands: string[]
  *   selectedChannels: string[]
+ *   selectedErrorSources: string[]
  *   productCodeQuery: string
  *   onPendingChange: (patch: Record<string, unknown>) => void
  *   onSearch: () => void
@@ -681,6 +699,7 @@ function FiltersBar({
   selectedTypeIds,
   selectedBrands,
   selectedChannels,
+  selectedErrorSources,
   productCodeQuery,
   onPendingChange,
   onSearch,
@@ -710,6 +729,14 @@ function FiltersBar({
           onChange={(next) => onPendingChange({ channels: next })}
           nounMany="kanallar"
           nounOne="kanal"
+        />
+        <StringMultiCheckDropdown
+          label="Hata kaynağı"
+          options={HATA_KAYNAGI_FILTER_OPTIONS}
+          value={selectedErrorSources}
+          onChange={(next) => onPendingChange({ errorSources: next })}
+          nounMany="kaynaklar"
+          nounOne="kaynak"
         />
         <div className="coe-field coe-field--productCode">
           <label className="coe-field__label" htmlFor="coe-product-code-filter">
@@ -869,7 +896,9 @@ function ErrorTable({ items, loading, error, onView, emptyHint }) {
                   <td className="coe-td coe-td--muted coe-td--tip">
                     <span
                       className="coe-typeHint"
-                      title={typeMeta ? `${typeMeta.title} — ${typeMeta.subtitle}` : ''}
+                      title={
+                        typeMeta ? (typeMeta.subtitle ? `${typeMeta.title} — ${typeMeta.subtitle}` : typeMeta.title) : ''
+                      }
                     >
                       {typeMeta?.title ?? '—'}
                     </span>
@@ -1038,12 +1067,13 @@ function formatSelectionSummary(ids) {
 }
 
 /**
- * @param {{ typeIds: string[]; brands: string[]; channels: string[]; productCodeQuery?: string }} p
+ * @param {{ typeIds: string[]; brands: string[]; channels: string[]; errorSources?: string[]; productCodeQuery?: string }} p
  */
 function formatAppliedHeaderSummary(p) {
   const parts = [formatSelectionSummary(p.typeIds)]
   if (p.brands?.length) parts.push(`${p.brands.length} marka`)
   if (p.channels?.length) parts.push(`${p.channels.length} kanal`)
+  if (p.errorSources?.length) parts.push(`${p.errorSources.length} hata kaynağı`)
   const pcq = String(p.productCodeQuery ?? '').trim()
   if (pcq) parts.push(`ürün kodu: ${pcq.length > 24 ? `${pcq.slice(0, 24)}…` : pcq}`)
   return parts.join(' · ')
@@ -1057,6 +1087,7 @@ function createDefaultPending() {
     q: '',
     brands: [],
     channels: [],
+    errorSources: [],
     productCodeQuery: '',
   }
 }
@@ -1116,6 +1147,7 @@ function ChannelOrderLogPanel({ apiBase, useMock, authHeader, onAppliedSummaryCh
         q: applied.q,
         brands: applied.brands,
         channels: applied.channels,
+        errorSources: applied.errorSources,
         productCodeQuery: applied.productCodeQuery,
       }
       const rows = useMock
@@ -1178,6 +1210,7 @@ function ChannelOrderLogPanel({ apiBase, useMock, authHeader, onAppliedSummaryCh
           selectedTypeIds={pending.typeIds}
           selectedBrands={pending.brands}
           selectedChannels={pending.channels}
+          selectedErrorSources={pending.errorSources}
           productCodeQuery={pending.productCodeQuery}
           onPendingChange={patchPending}
           onSearch={handleSearch}
