@@ -233,9 +233,44 @@
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12);
-  padding: 6px 0;
+  padding: 0;
   max-height: 300px;
   overflow-y: auto;
+}
+
+.coe-dd__bulk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e8edf5;
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.coe-dd__bulkBtn {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #2563eb;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.coe-dd__bulkBtn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.coe-dd__bulkBtn:active {
+  background: #dbeafe;
 }
 
 .coe-dd__panel--scroll {

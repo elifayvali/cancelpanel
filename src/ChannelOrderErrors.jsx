@@ -333,6 +333,22 @@ function passesBrandChannel(row, brands, channels) {
   return true
 }
 
+/** Boş seçim = tüm hata tipleri (marka/kanal filtresiyle aynı mantık). */
+function resolveTypeIdsForQuery(typeIds) {
+  const picked = typeIds && typeIds.length > 0 ? typeIds : []
+  return picked.length > 0 ? picked : MAIL_TYPES.map((t) => t.id)
+}
+
+/** Metin alanları için gecikmeli güncelleme (yazarken her tuşta istek atılmaz). */
+function useDebouncedFilterText(q, productCodeQuery, delayMs = 400) {
+  const [debounced, setDebounced] = useState({ q, productCodeQuery })
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebounced({ q, productCodeQuery }), delayMs)
+    return () => window.clearTimeout(t)
+  }, [q, productCodeQuery, delayMs])
+  return debounced
+}
+
 /** Virgül veya noktalı virgülle ayrılmış ürün kodları (ör. `47821;36677` veya `33087, 114006`) */
 function parseProductCodeTokens(rawQuery) {
   return String(rawQuery ?? '')
@@ -563,6 +579,20 @@ function HeaderBar({ brandLabel, systemName, activeTitle }) {
   )
 }
 
+/** @param {{ onSelectAll: () => void; onRemoveAll: () => void }} props */
+function FilterDropdownBulkActions({ onSelectAll, onRemoveAll }) {
+  return (
+    <div className="coe-dd__bulk" role="group" aria-label="Toplu seçim">
+      <button type="button" className="coe-dd__bulkBtn" onClick={onSelectAll}>
+        Select all
+      </button>
+      <button type="button" className="coe-dd__bulkBtn" onClick={onRemoveAll}>
+        Remove all
+      </button>
+    </div>
+  )
+}
+
 /** @param {{ value: string[]; onChange: (next: string[]) => void }} props */
 function ReasonTypeMultiDropdown({ value, onChange }) {
   const [open, setOpen] = useState(false)
@@ -585,7 +615,7 @@ function ReasonTypeMultiDropdown({ value, onChange }) {
   const selectedTitles = value.map((id) => MAIL_TYPES.find((t) => t.id === id)?.title ?? id)
   const summary =
     value.length === 0
-      ? 'Hata sebebi seçin…'
+      ? 'Tüm hata sebepleri'
       : value.length === MAIL_TYPES.length
         ? `Tüm hata sebepleri (${MAIL_TYPES.length})`
         : selectedTitles.join(' · ')
@@ -607,6 +637,10 @@ function ReasonTypeMultiDropdown({ value, onChange }) {
       </div>
       {open ? (
         <div className="coe-dd__panel" role="listbox" aria-label="Hata sebebi seçenekleri">
+          <FilterDropdownBulkActions
+            onSelectAll={() => onChange(MAIL_TYPES.map((t) => t.id))}
+            onRemoveAll={() => onChange([])}
+          />
           {MAIL_TYPES.map((t) => (
             <label
               key={t.id}
@@ -676,6 +710,10 @@ function StringMultiCheckDropdown({ label, options, value, onChange, nounMany, n
       </div>
       {open ? (
         <div className="coe-dd__panel coe-dd__panel--scroll" role="listbox" aria-label={label}>
+          <FilterDropdownBulkActions
+            onSelectAll={() => onChange([...options])}
+            onRemoveAll={() => onChange([])}
+          />
           {options.map((opt) => (
             <label key={opt} className="coe-dd__row coe-dd__row--simple" title={opt}>
               <input type="checkbox" checked={value.includes(opt)} onChange={() => toggle(opt)} />
@@ -698,11 +736,9 @@ function StringMultiCheckDropdown({ label, options, value, onChange, nounMany, n
  *   selectedChannels: string[]
  *   selectedErrorSources: string[]
  *   productCodeQuery: string
- *   onPendingChange: (patch: Record<string, unknown>) => void
- *   onSearch: () => void
+ *   onFiltersChange: (patch: Record<string, unknown>) => void
  *   onRefresh: () => void
  *   loading: boolean
- *   searchDisabled?: boolean
  * }} props
  */
 function FiltersBar({
@@ -714,24 +750,22 @@ function FiltersBar({
   selectedChannels,
   selectedErrorSources,
   productCodeQuery,
-  onPendingChange,
-  onSearch,
+  onFiltersChange,
   onRefresh,
   loading,
-  searchDisabled,
 }) {
   return (
     <div className="coe-filters coe-filters--stack coe-filters--left">
       <div className="coe-filters__top coe-filters__top--row">
         <ReasonTypeMultiDropdown
           value={selectedTypeIds}
-          onChange={(next) => onPendingChange({ typeIds: next })}
+          onChange={(next) => onFiltersChange({ typeIds: next })}
         />
         <StringMultiCheckDropdown
           label="Marka"
           options={MOCK_BRAND_OPTIONS}
           value={selectedBrands}
-          onChange={(next) => onPendingChange({ brands: next })}
+          onChange={(next) => onFiltersChange({ brands: next })}
           nounMany="markalar"
           nounOne="marka"
         />
@@ -739,7 +773,7 @@ function FiltersBar({
           label="Kanal"
           options={MOCK_CHANNEL_OPTIONS}
           value={selectedChannels}
-          onChange={(next) => onPendingChange({ channels: next })}
+          onChange={(next) => onFiltersChange({ channels: next })}
           nounMany="kanallar"
           nounOne="kanal"
         />
@@ -747,7 +781,7 @@ function FiltersBar({
           label="Hata kaynağı"
           options={HATA_KAYNAGI_FILTER_OPTIONS}
           value={selectedErrorSources}
-          onChange={(next) => onPendingChange({ errorSources: next })}
+          onChange={(next) => onFiltersChange({ errorSources: next })}
           nounMany="kaynaklar"
           nounOne="kaynak"
         />
@@ -763,7 +797,7 @@ function FiltersBar({
             placeholder="Örn. 47821;36677 veya 33087, 114006"
             autoComplete="off"
             spellCheck={false}
-            onChange={(e) => onPendingChange({ productCodeQuery: e.target.value })}
+            onChange={(e) => onFiltersChange({ productCodeQuery: e.target.value })}
           />
         </div>
         <div className="coe-field coe-field--searchInline">
@@ -780,7 +814,7 @@ function FiltersBar({
               placeholder="Hata tipi, hata kaynağı, ürün kodu, hata mesajı detayı"
               autoComplete="off"
               spellCheck={false}
-              onChange={(e) => onPendingChange({ q: e.target.value })}
+              onChange={(e) => onFiltersChange({ q: e.target.value })}
             />
           </div>
         </div>
@@ -794,7 +828,7 @@ function FiltersBar({
             type="date"
             className="coe-input"
             value={from}
-            onChange={(e) => onPendingChange({ from: e.target.value })}
+            onChange={(e) => onFiltersChange({ from: e.target.value })}
           />
         </div>
         <div className="coe-field">
@@ -805,7 +839,7 @@ function FiltersBar({
             type="date"
             className="coe-input"
             value={to}
-            onChange={(e) => onPendingChange({ to: e.target.value })}
+            onChange={(e) => onFiltersChange({ to: e.target.value })}
           />
         </div>
         <div className="coe-field coe-field--actions">
@@ -813,10 +847,7 @@ function FiltersBar({
             {'\u00a0'}
           </span>
           <div className="coe-filterActions">
-            <button type="button" className="coe-btnAra" onClick={onSearch} disabled={loading || searchDisabled}>
-              Ara
-            </button>
-            <IconButton onClick={onRefresh} title="Seçili filtrelere göre yenile" disabled={loading}>
+            <IconButton onClick={onRefresh} title="Listeyi yenile" disabled={loading}>
               {loading ? <Loader2 size={16} className="coe-spin" /> : <RefreshCw size={16} />}
             </IconButton>
           </div>
@@ -1072,8 +1103,7 @@ function DetailModal({ row, onClose }) {
 }
 
 function formatSelectionSummary(ids) {
-  if (ids.length === 0) return 'Seçim yok'
-  if (ids.length === MAIL_TYPES.length) return 'Tüm hata tipleri'
+  if (ids.length === 0 || ids.length === MAIL_TYPES.length) return 'Tüm hata tipleri'
   return ids
     .map((id) => MAIL_TYPES.find((t) => t.id === id)?.title ?? id)
     .join(' · ')
@@ -1092,9 +1122,9 @@ function formatAppliedHeaderSummary(p) {
   return parts.join(' · ')
 }
 
-function createDefaultPending() {
+function createDefaultFilters() {
   return {
-    typeIds: MAIL_TYPES.map((t) => t.id),
+    typeIds: [],
     from: todayISO(-30),
     to: todayISO(0),
     q: '',
@@ -1114,9 +1144,22 @@ function createDefaultPending() {
  * }} props
  */
 function ChannelOrderLogPanel({ apiBase, useMock, authHeader, onAppliedSummaryChange }) {
-  const [pending, setPending] = useState(createDefaultPending)
-  /** Sunulan sonuçların kaynağı; açılışta varsayılanlarla dolar, filtre değişince «Ara» ile güncellenir. */
-  const [applied, setApplied] = useState(createDefaultPending)
+  const [filters, setFilters] = useState(createDefaultFilters)
+  const debouncedText = useDebouncedFilterText(filters.q, filters.productCodeQuery)
+
+  const effectiveFilters = useMemo(
+    () => ({
+      ...filters,
+      q: debouncedText.q,
+      productCodeQuery: debouncedText.productCodeQuery,
+    }),
+    [filters, debouncedText],
+  )
+
+  const typeIdsForQuery = useMemo(
+    () => resolveTypeIdsForQuery(effectiveFilters.typeIds),
+    [effectiveFilters.typeIds],
+  )
 
   const [items, setItems] = useState([])
   const [pageSize, setPageSize] = useState(25)
@@ -1137,8 +1180,8 @@ function ChannelOrderLogPanel({ apiBase, useMock, authHeader, onAppliedSummaryCh
     [items, currentPage, pageSize],
   )
 
-  const patchPending = (/** @type {Record<string, unknown>} */ patch) => {
-    setPending((p) => ({ ...p, ...patch }))
+  const patchFilters = (/** @type {Record<string, unknown>} */ patch) => {
+    setFilters((p) => ({ ...p, ...patch }))
   }
 
   const load = useCallback(async () => {
@@ -1147,25 +1190,19 @@ function ChannelOrderLogPanel({ apiBase, useMock, authHeader, onAppliedSummaryCh
     abortRef.current = ctrl
     setLoading(true)
     setError(null)
-    if (applied.typeIds.length === 0) {
-      setItems([])
-      setPage(1)
-      setLoading(false)
-      return
-    }
     try {
       const base = {
-        from: applied.from,
-        to: applied.to,
-        q: applied.q,
-        brands: applied.brands,
-        channels: applied.channels,
-        errorSources: applied.errorSources,
-        productCodeQuery: applied.productCodeQuery,
+        from: effectiveFilters.from,
+        to: effectiveFilters.to,
+        q: effectiveFilters.q,
+        brands: effectiveFilters.brands,
+        channels: effectiveFilters.channels,
+        errorSources: effectiveFilters.errorSources,
+        productCodeQuery: effectiveFilters.productCodeQuery,
       }
       const rows = useMock
-        ? await fetchMockMergedMailLogsAll(applied.typeIds, base)
-        : await fetchApiMergedMailLogsAllRows(applied.typeIds, base, apiBase, authHeader, ctrl.signal)
+        ? await fetchMockMergedMailLogsAll(typeIdsForQuery, base)
+        : await fetchApiMergedMailLogsAllRows(typeIdsForQuery, base, apiBase, authHeader, ctrl.signal)
       setItems(Array.isArray(rows) ? rows : [])
       setPage(1)
     } catch (e) {
@@ -1173,7 +1210,7 @@ function ChannelOrderLogPanel({ apiBase, useMock, authHeader, onAppliedSummaryCh
     } finally {
       setLoading(false)
     }
-  }, [apiBase, useMock, authHeader, applied, reqId])
+  }, [apiBase, useMock, authHeader, effectiveFilters, typeIdsForQuery, reqId])
 
   useEffect(() => {
     if (page !== currentPage) setPage(currentPage)
@@ -1184,12 +1221,9 @@ function ChannelOrderLogPanel({ apiBase, useMock, authHeader, onAppliedSummaryCh
     return () => abortRef.current?.abort()
   }, [load])
 
-  const handleSearch = () => {
-    if (pending.typeIds.length === 0) return
-    const next = { ...pending }
-    setApplied(next)
-    onAppliedSummaryChange?.(formatAppliedHeaderSummary(next))
-  }
+  useEffect(() => {
+    onAppliedSummaryChange?.(formatAppliedHeaderSummary(effectiveFilters))
+  }, [effectiveFilters, onAppliedSummaryChange])
 
   const handleRefresh = () => {
     setReqId((x) => x + 1)
@@ -1201,7 +1235,7 @@ function ChannelOrderLogPanel({ apiBase, useMock, authHeader, onAppliedSummaryCh
   }
 
   const handleExportExcel = () => {
-    if (loading || applied.typeIds.length === 0 || items.length === 0) return
+    if (loading || items.length === 0) return
     setError(null)
     try {
       exportChannelErrorsToExcel(items)
@@ -1210,28 +1244,23 @@ function ChannelOrderLogPanel({ apiBase, useMock, authHeader, onAppliedSummaryCh
     }
   }
 
-  const emptyHint =
-    applied.typeIds.length === 0 ? 'Listelemek için en az bir hata sebebi seçin.' : undefined
-
   return (
     <div className="coe-panelStack">
       <div className="coe-card">
         <FiltersBar
-          from={pending.from}
-          to={pending.to}
-          q={pending.q}
-          selectedTypeIds={pending.typeIds}
-          selectedBrands={pending.brands}
-          selectedChannels={pending.channels}
-          selectedErrorSources={pending.errorSources}
-          productCodeQuery={pending.productCodeQuery}
-          onPendingChange={patchPending}
-          onSearch={handleSearch}
+          from={filters.from}
+          to={filters.to}
+          q={filters.q}
+          selectedTypeIds={filters.typeIds}
+          selectedBrands={filters.brands}
+          selectedChannels={filters.channels}
+          selectedErrorSources={filters.errorSources}
+          productCodeQuery={filters.productCodeQuery}
+          onFiltersChange={patchFilters}
           onRefresh={handleRefresh}
           loading={loading}
-          searchDisabled={pending.typeIds.length === 0}
         />
-        <ErrorTable items={pagedItems} loading={loading} error={error} onView={setSelected} emptyHint={emptyHint} />
+        <ErrorTable items={pagedItems} loading={loading} error={error} onView={setSelected} />
         <ResultsFooterBar
           totalAll={totalAll}
           rangeStart={rangeStart}
@@ -1249,7 +1278,7 @@ function ChannelOrderLogPanel({ apiBase, useMock, authHeader, onAppliedSummaryCh
           }
           loading={loading}
           onExportExcel={handleExportExcel}
-          exportDisabled={applied.typeIds.length === 0 || totalAll === 0}
+          exportDisabled={totalAll === 0}
         />
       </div>
 
@@ -1274,7 +1303,7 @@ export default function ChannelOrderErrors({
   brandLabel = 'AT',
   systemName = 'ATP Zenia',
 }) {
-  const [headerCrumb, setHeaderCrumb] = useState(() => formatAppliedHeaderSummary(createDefaultPending()))
+  const [headerCrumb, setHeaderCrumb] = useState(() => formatAppliedHeaderSummary(createDefaultFilters()))
   const useMock = useMockProp || getQueryParam('mock') === '1'
 
   return (
