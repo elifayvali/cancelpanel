@@ -333,18 +333,31 @@ function passesBrandChannel(row, brands, channels) {
   return true
 }
 
+/** Virgül veya noktalı virgülle ayrılmış ürün kodları (ör. `47821;36677` veya `33087, 114006`) */
+function parseProductCodeTokens(rawQuery) {
+  return String(rawQuery ?? '')
+    .split(/[,;]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
 /**
- * Hata tipine göre tabloda kullanılan ürün kodunda metin araması (büyük/küçük harf yok sayılır).
+ * Hata tipine göre tabloda kullanılan ürün kodunda arama.
+ * Tek kod: kısmi eşleşme; birden fazla kod: listeden herhangi biriyle tam eşleşme (OR).
  * @param {Record<string, unknown>} row
  * @param {string} typeId
  * @param {string | undefined} rawQuery
  */
 function passesProductCodeQuery(row, typeId, rawQuery) {
-  const q = String(rawQuery ?? '').trim().toLocaleLowerCase('tr-TR')
-  if (!q) return true
+  const tokens = parseProductCodeTokens(rawQuery)
+  if (tokens.length === 0) return true
   const idVal = getProductIdForRow(row, typeId)
   if (idVal == null || String(idVal).trim() === '') return false
-  return String(idVal).toLocaleLowerCase('tr-TR').includes(q)
+  const idNorm = String(idVal).trim().toLocaleLowerCase('tr-TR')
+  if (tokens.length === 1) {
+    return idNorm.includes(tokens[0].toLocaleLowerCase('tr-TR'))
+  }
+  return tokens.some((t) => idNorm === t.toLocaleLowerCase('tr-TR'))
 }
 
 /** @param {string} typeId */
@@ -747,7 +760,7 @@ function FiltersBar({
             type="text"
             className="coe-input"
             value={productCodeQuery}
-            placeholder="Örn. 33087, 114006…"
+            placeholder="Örn. 47821;36677 veya 33087, 114006"
             autoComplete="off"
             spellCheck={false}
             onChange={(e) => onPendingChange({ productCodeQuery: e.target.value })}
