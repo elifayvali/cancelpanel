@@ -110,11 +110,6 @@
   gap: 16px 20px;
 }
 
-.pc-form__field--band .pc-form__label {
-  align-self: start;
-  margin-top: 10px;
-}
-
 .pc-form__field--noLabel {
   grid-template-columns: 1fr;
   gap: 0;
@@ -125,35 +120,6 @@
   font-weight: 600;
   color: #5e6885;
   text-align: left;
-}
-
-.pc-form__bandRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.pc-form__bandSelect {
-  flex: 1 1 220px;
-  min-width: 0;
-}
-
-.pc-form__bandSelect .pc-form__field {
-  grid-template-columns: 1fr;
-  gap: 0;
-}
-
-.pc-form__bandCode {
-  font-size: 12px;
-  font-weight: 600;
-  color: #4a5682;
-  font-family: ui-monospace, 'Cascadia Code', monospace;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: #f6f8fc;
-  border: 1px solid #e2e7f0;
-  white-space: nowrap;
 }
 
 .pc-form__field--channel {
@@ -873,7 +839,7 @@
     gap: 8px;
   }
 
-  .pc-form__field--band .pc-form__label {
+  .pc-form__field--channel .pc-form__label {
     margin-top: 0;
   }
 

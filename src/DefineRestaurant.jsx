@@ -10,12 +10,12 @@ const PRODUCT_GROUPS = [
 ]
 
 const PRICE_BANDS = [
-  { id: '1002', groupId: '1001', label: '1002 paket 1', code: 'bktr100012002' },
-  { id: '1003', groupId: '1001', label: '1003 paket 2', code: 'bktr100013002' },
-  { id: '2002', groupId: '2000', label: '2002 paket 1', code: 'bktr200012002' },
-  { id: '2003', groupId: '2000', label: '2003 paket 2', code: 'bktr200013002' },
-  { id: '3002', groupId: '3000', label: '3002 paket 1', code: 'bktr300012002' },
-  { id: '3003', groupId: '3000', label: '3003 paket 2', code: 'bktr300013002' },
+  { id: '1002', groupId: '1001', label: '1002 paket 1' },
+  { id: '1003', groupId: '1001', label: '1003 paket 2' },
+  { id: '2002', groupId: '2000', label: '2002 paket 1' },
+  { id: '2003', groupId: '2000', label: '2003 paket 2' },
+  { id: '3002', groupId: '3000', label: '3002 paket 1' },
+  { id: '3003', groupId: '3000', label: '3003 paket 2' },
 ]
 
 const BAND_TYPES = [
@@ -197,7 +197,6 @@ export default function DefineRestaurant() {
       productGroupLabel: groupLabel,
       priceBand,
       priceBandLabel: bandLabel,
-      priceBandCode: selectedBand?.code ?? '',
       bandType,
       bandTypeLabel: typeLabel,
     })
@@ -297,29 +296,14 @@ export default function DefineRestaurant() {
               options={PRODUCT_GROUPS.map((g) => ({ value: g.id, label: g.label }))}
             />
 
-            <div className="pc-form__field pc-form__field--band">
-              <label className="pc-form__label" htmlFor="pc-price-band">
-                Fiyat Bandı
-              </label>
-              <div className="pc-form__bandRow">
-                <div className="pc-form__bandSelect">
-                  <PriceSelect
-                    id="pc-price-band"
-                    label="Fiyat Bandı"
-                    hideLabel
-                    value={priceBand}
-                    onChange={setPriceBand}
-                    placeholder="Fiyat bandı seçiniz"
-                    options={priceBandOptions}
-                  />
-                </div>
-                {selectedBand ? (
-                  <span className="pc-form__bandCode" title="Band kodu">
-                    {selectedBand.code}
-                  </span>
-                ) : null}
-              </div>
-            </div>
+            <PriceSelect
+              id="pc-price-band"
+              label="Fiyat Bandı"
+              value={priceBand}
+              onChange={setPriceBand}
+              placeholder="Fiyat bandı seçiniz"
+              options={priceBandOptions}
+            />
 
             <div className="pc-form__field">
               <span className="pc-form__label">Fiyat Bandı Tipi</span>
