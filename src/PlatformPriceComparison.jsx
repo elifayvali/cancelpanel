@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { PlatformComparisonToolbar } from './PlatformComparisonToolbar'
+import { PlatformMissingInfoBox, PlatformMissingInfoModal } from './PlatformMissingInfo'
 import { diffLabel, filterDiffRows, formatTl, getCatalogForBrand } from './platformPriceComparisonMock'
 import './PriceComparison.css'
 
@@ -9,6 +10,7 @@ export default function PlatformPriceComparison() {
   const [rows, setRows] = useState(null)
   const [formError, setFormError] = useState('')
   const [checked, setChecked] = useState(false)
+  const [infoModalOpen, setInfoModalOpen] = useState(false)
 
   const handleChannelIdChange = useCallback((e) => {
     setChannelId(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))
@@ -32,6 +34,7 @@ export default function PlatformPriceComparison() {
     }
     setRows(filterDiffRows(getCatalogForBrand(brand)))
     setChecked(true)
+    setInfoModalOpen(true)
   }, [channelId, brand])
 
   return (
@@ -66,7 +69,9 @@ export default function PlatformPriceComparison() {
           />
 
           {checked && rows ? (
-            rows.length > 0 ? (
+            <>
+              <PlatformMissingInfoBox onClick={() => setInfoModalOpen(true)} />
+              {rows.length > 0 ? (
             <div className="pc-platform-grid">
               <div className="pc-platform-col">
                 <h3 className="pc-platform-col__title">Kanal Ürünleri</h3>
@@ -115,14 +120,17 @@ export default function PlatformPriceComparison() {
                 </ul>
               </div>
             </div>
-            ) : (
-              <p className="pc-platform-empty">Fiyat farkı bulunan ürün yok — tüm eşleşen kayıtlar eşit.</p>
-            )
+              ) : (
+                <p className="pc-platform-empty">Fiyat farkı bulunan ürün yok — tüm eşleşen kayıtlar eşit.</p>
+              )}
+            </>
           ) : (
             <p className="pc-platform-hint">Kanal ID ve marka girip Kontrol Et ile karşılaştırmayı başlatın.</p>
           )}
         </section>
       </main>
+
+      <PlatformMissingInfoModal open={infoModalOpen} onClose={() => setInfoModalOpen(false)} />
     </div>
   )
 }

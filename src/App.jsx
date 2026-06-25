@@ -3,7 +3,6 @@ import RestaurantChannelStatus from './RestaurantChannelStatus'
 import ChannelOrderErrors from './ChannelOrderErrors'
 import DefineRestaurant from './DefineRestaurant'
 import PlatformPriceComparison from './PlatformPriceComparison'
-import PlatformPriceComparison2 from './PlatformPriceComparison2'
 import './App.css'
 
 class RestaurantChannelErrorBoundary extends Component {
@@ -189,8 +188,7 @@ function App() {
   const isPriceCompareGroupActive =
     activeMenu === 'price-compare' ||
     activeMenu === 'price-compare-define-restaurant' ||
-    activeMenu === 'price-compare-platform' ||
-    activeMenu === 'price-compare-platform-2'
+    activeMenu === 'price-compare-platform'
 
   return (
     <div className="page">
@@ -356,13 +354,6 @@ function App() {
             >
               Platform Fiyat Karşılaştırma
             </button>
-            <button
-              type="button"
-              className={`sub-menu-item ${activeMenu === 'price-compare-platform-2' ? 'active' : ''}`}
-              onClick={() => setActiveMenu('price-compare-platform-2')}
-            >
-              Platform Fiyat Karşılaştırma 2
-            </button>
           </div>
         </nav>
         <div className="sidebar-footer" />
@@ -386,8 +377,7 @@ function App() {
             activeMenu === 'restaurant-channel' ||
             activeMenu === 'channel-order-errors' ||
             activeMenu === 'price-compare-define-restaurant' ||
-            activeMenu === 'price-compare-platform' ||
-            activeMenu === 'price-compare-platform-2'
+            activeMenu === 'price-compare-platform'
               ? 'content-panel'
               : 'blank-panel'
           }
@@ -400,7 +390,6 @@ function App() {
           {activeMenu === 'channel-order-errors' ? <ChannelOrderErrors /> : null}
           {activeMenu === 'price-compare-define-restaurant' ? <DefineRestaurant /> : null}
           {activeMenu === 'price-compare-platform' ? <PlatformPriceComparison /> : null}
-          {activeMenu === 'price-compare-platform-2' ? <PlatformPriceComparison2 /> : null}
         </section>
       </main>
     </div>

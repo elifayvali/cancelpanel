@@ -23,10 +23,7 @@ export const MOCK_CATALOG = {
   ],
 }
 
-export const MOCK_MISSING_NOTICES = [
-  "Double Cheeseburger CCS'te bulunamadı",
-  'Texas Burger platformda bulunamadı',
-]
+export const MOCK_MISSING_NOTICES = ["Double Cheeseburger CCS'te bulunamadı"]
 
 export function formatTl(amount) {
   return `${amount} TL`

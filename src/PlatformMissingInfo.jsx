@@ -15,7 +15,7 @@ export function PlatformMissingInfoBox({ onClick }) {
             <li key={line}>{line}</li>
           ))}
         </ul>
-        <span className="pc-platform-info__hint">Detay için tıklayın</span>
+        <span className="pc-platform-info__hint">Tüm listeyi göster</span>
       </div>
     </button>
   )
