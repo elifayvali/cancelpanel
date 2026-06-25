@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { PlatformComparisonToolbar } from './PlatformComparisonToolbar'
-import { diffLabel, formatTl, getCatalogForBrand } from './platformPriceComparisonMock'
+import { diffLabel, filterDiffRows, formatTl, getCatalogForBrand } from './platformPriceComparisonMock'
 import './PriceComparison.css'
 
 export default function PlatformPriceComparison() {
@@ -30,7 +30,7 @@ export default function PlatformPriceComparison() {
       setFormError('Marka seçiniz.')
       return
     }
-    setRows(getCatalogForBrand(brand))
+    setRows(filterDiffRows(getCatalogForBrand(brand)))
     setChecked(true)
   }, [channelId, brand])
 
@@ -66,6 +66,7 @@ export default function PlatformPriceComparison() {
           />
 
           {checked && rows ? (
+            rows.length > 0 ? (
             <div className="pc-platform-grid">
               <div className="pc-platform-col">
                 <h3 className="pc-platform-col__title">Kanal Ürünleri</h3>
@@ -114,6 +115,9 @@ export default function PlatformPriceComparison() {
                 </ul>
               </div>
             </div>
+            ) : (
+              <p className="pc-platform-empty">Fiyat farkı bulunan ürün yok — tüm eşleşen kayıtlar eşit.</p>
+            )
           ) : (
             <p className="pc-platform-hint">Kanal ID ve marka girip Kontrol Et ile karşılaştırmayı başlatın.</p>
           )}
