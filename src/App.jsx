@@ -1,6 +1,9 @@
 import { Component, useState } from 'react'
 import RestaurantChannelStatus from './RestaurantChannelStatus'
 import ChannelOrderErrors from './ChannelOrderErrors'
+import DefineRestaurant from './DefineRestaurant'
+import PlatformPriceComparison from './PlatformPriceComparison'
+import PlatformPriceComparison2 from './PlatformPriceComparison2'
 import './App.css'
 
 class RestaurantChannelErrorBoundary extends Component {
@@ -136,6 +139,15 @@ function MenuIcon({ name }) {
     )
   }
 
+  if (name === 'price-compare') {
+    return (
+      <svg {...common}>
+        <path d="M4 7h16M4 12h10M4 17h6" />
+        <path d="M16 10v8M13 13h6" />
+      </svg>
+    )
+  }
+
   if (name === 'chevron') {
     return (
       <svg {...common}>
@@ -173,6 +185,12 @@ function App() {
     activeMenu === 'errors-total' ||
     activeMenu === 'errors-channel' ||
     activeMenu === 'errors-order'
+
+  const isPriceCompareGroupActive =
+    activeMenu === 'price-compare' ||
+    activeMenu === 'price-compare-define-restaurant' ||
+    activeMenu === 'price-compare-platform' ||
+    activeMenu === 'price-compare-platform-2'
 
   return (
     <div className="page">
@@ -312,6 +330,40 @@ function App() {
             <span className="menu-icon"><MenuIcon name="channel-order-errors" /></span>
             <span className="menu-label">Kanal Sipariş Hataları</span>
           </button>
+
+          <div className="menu-group">
+            <button
+              type="button"
+              className={`menu-item group-open ${isPriceCompareGroupActive ? 'active' : ''}`}
+              onClick={() => setActiveMenu('price-compare-define-restaurant')}
+              aria-label="Fiyat Karşılaştırma"
+            >
+              <span className="menu-icon"><MenuIcon name="price-compare" /></span>
+              <span className="menu-label">Fiyat Karşılaştırma</span>
+              <span className="chevron"><MenuIcon name="chevron" /></span>
+            </button>
+            <button
+              type="button"
+              className={`sub-menu-item ${activeMenu === 'price-compare-define-restaurant' ? 'active' : ''}`}
+              onClick={() => setActiveMenu('price-compare-define-restaurant')}
+            >
+              Restoran Tanımla
+            </button>
+            <button
+              type="button"
+              className={`sub-menu-item ${activeMenu === 'price-compare-platform' ? 'active' : ''}`}
+              onClick={() => setActiveMenu('price-compare-platform')}
+            >
+              Platform Fiyat Karşılaştırma
+            </button>
+            <button
+              type="button"
+              className={`sub-menu-item ${activeMenu === 'price-compare-platform-2' ? 'active' : ''}`}
+              onClick={() => setActiveMenu('price-compare-platform-2')}
+            >
+              Platform Fiyat Karşılaştırma 2
+            </button>
+          </div>
         </nav>
         <div className="sidebar-footer" />
       </aside>
@@ -331,7 +383,11 @@ function App() {
 
         <section
           className={
-            activeMenu === 'restaurant-channel' || activeMenu === 'channel-order-errors'
+            activeMenu === 'restaurant-channel' ||
+            activeMenu === 'channel-order-errors' ||
+            activeMenu === 'price-compare-define-restaurant' ||
+            activeMenu === 'price-compare-platform' ||
+            activeMenu === 'price-compare-platform-2'
               ? 'content-panel'
               : 'blank-panel'
           }
@@ -342,6 +398,9 @@ function App() {
             </RestaurantChannelErrorBoundary>
           ) : null}
           {activeMenu === 'channel-order-errors' ? <ChannelOrderErrors /> : null}
+          {activeMenu === 'price-compare-define-restaurant' ? <DefineRestaurant /> : null}
+          {activeMenu === 'price-compare-platform' ? <PlatformPriceComparison /> : null}
+          {activeMenu === 'price-compare-platform-2' ? <PlatformPriceComparison2 /> : null}
         </section>
       </main>
     </div>

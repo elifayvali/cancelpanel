@@ -1,82 +1,154 @@
-# Müşteri İptal / Kanal Hata Paneli — Çalışma Tanımı
+# Mail İletilen Hata Bildirimleri — Kanal Sipariş Hata Listesi (Panel Tanımı)
 
-## Referans
+## 1. Özet
 
-İş paketi ve bağlam için Teams görüşmesi / sohbet bağlantısı:
+Mail ile iletilen kanal sipariş hatalarının müşteri / operasyon ekipleri tarafından **web panelde** sorgulanması, filtrelenmesi ve detayının görüntülenmesi hedeflenmektedir.
 
-[Teams — Cancelpanel iptal bildirimleri (chat bağlantısı)](https://teams.microsoft.com/l/message/19:7e6b13fc-6709-4b9f-83bb-60bf2f0302e8_c05bb300-c823-456a-9029-d63ae37d8684@unq.gbl.spaces/1778768414868?context=%7B%22contextType%22%3A%22chat%22%7D)
+Bu doküman, **CancelPanel** prototipindeki **Kanal Sipariş Hataları** ekranının güncel işleyişini tanımlar. CancelPanel, müşteriye verilecek **asıl ürünün ekran ve kabul kriteri referansıdır**; mock veri ve istemci tarafı filtreleme üretim öncesi davranış örneğidir.
 
-Bu bağlantıdaki mutabakat doğrultusunda, **belirtilen yapıda mail ile gönderilen iptaller** (ve ilişkili kanal sipariş hataları) için müşteriye teslim edilecek **self-servis / operasyon paneli** tanımlanmaktadır.
-
-## Bu panel neyi temsil ediyor?
-
-- **Hedef ürün:** Müşterinin, iptal ve kanal sipariş hata süreçlerini kendi tarafında takip edebileceği, filtreleyebileceği ve detay görebileceği **web paneli**.
-- **Veri kaynağı:** İptal ve hata bildirimleri, anılan mail / bildirim mimarisi ile üretilen kayıtlarla uyumlu olacak şekilde beslenecektir (mock veri yerine üretim API’leri ve yetkilendirme).
-
-## Bu repodaki CancelPanel ile ilişki
-
-Bu depodaki **CancelPanel** uygulaması (Vite + React), yukarıdaki hedefe göre:
-
-- **Yapılacak asıl çalışmanın ekran ve akış referansıdır** — yani müşteriye verilecek panelin işlev ve bilgi mimarisinin somutlaştırılmış halidir.
-- Şu anki sürümde **mock veri**, **yerel Excel yükleme** ve **istemci tarafı filtreleme** gibi geliştirme kolaylıkları bulunur; bunlar üretim panelinin **davranış prototipi** olarak düşünülmelidir.
-- **Asıl yapılacak iş**, bu arayüzün arkasına gerçek servislerin bağlanması, müşteri kimliği / yetkisi, gözlemlenebilirlik, SLA ve operasyonel süreçlerin netleştirilmesidir — tek başına bu repo “bitti” anlamına gelmez; **ürünün görünür yüzü ve kabul kriterlerinin taşıyıcısıdır**.
-
-Özet cümle: **CancelPanel = müşteri panelinin yapılacak işe göre şekillendirilmiş UI ve kullanım senaryosu örneği; teslim edilecek “asıl iş” ise bu deneyimin güvenli, ölçeklenebilir ve entegre bir ürün olarak hayata geçirilmesidir.**
-
-## Panelde öne çıkan işlev alanları (referans)
-
-Aşağıdakiler, müşteri paneli kapsamı için **referans ekranlar** olarak ele alınmalıdır (detaylar kod ve ekranlarla evrilebilir):
-
-| Alan | Açıklama |
-|------|----------|
-| Kanal sipariş hataları | Hata sebebi, marka, kanal, hata kaynağı, ürün kodu, tarih aralığı ve metin araması ile listeleme; satır detayında **Hata Detayı** popup düzeni. |
-| Restoran kanal durumu | Kanal açık/kapalı özetleri, mock/Excel ile beslenen operasyon görünümü (müşteri ihtiyacına göre kapsam daraltılabilir veya ayrı modül olabilir). |
-| Hata detayı | Sabit açıklama metinleri ve sipariş bağlamı (DCID, platform, kanal, marka, tarih, hata mesajı) ile tutarlı gösterim. |
-
-## Ekranın nasıl çalıştığı (mevcut CancelPanel uygulaması)
-
-### Genel yerleşim ve menü
-
-- Uygulama **sol menü + üst çubuk + ana içerik** düzenindedir.
-- Sol menüde birçok başlık (Dashboard, Sipariş Özeti, Sipariş Arama vb.) bulunur; **şu an gerçek panel içeriği yalnızca iki menüde açılır:**
-  - **Restoran Kanal Durumu** → restoran / kanal durumu ekranı.
-  - **Kanal Sipariş Hataları** → kanal sipariş hata listesi ve filtreler.
-- Diğer menü öğelerine tıklandığında ana alan **boş / yer tutucu** panel olarak kalır (ileride doldurulabilir veya müşteri kapsamında gizlenebilir).
-- Menü **daraltılabilir** (hamburger); üst barda örnek kullanıcı bilgisi gösterilir (statik; gerçek oturum yoktur).
-
-### Kanal Sipariş Hataları ekranı
-
-1. **Veri kaynağı:** Varsayılan olarak **mock** üretilmiş veri kullanılır. Uygulama `ChannelOrderErrors` bileşeninde `useMock` ile kontrol edilir; canlı API kullanımı entegrasyonla açılabilir.
-2. **Filtreler (üst bant):** Değerleri seçip yazdıktan sonra sonuçların güncellenmesi için **«Ara»** düğmesine basılır (yazarken anında sunucuya gitmez; uygulanan filtre ile liste yenilenir). Yanındaki **yenile** ikonu aynı filtrelerle veriyi tekrar yükler.
-   - **Hata sebebi:** Çoklu seçim; her kutu Türkçe başlıkla bir hata tipini temsil eder (ör. Ürün Mutfağa Gönderilemedi, Ana Ürün Eşleşmedi, …).
-   - **Marka / Kanal / Hata kaynağı:** Çoklu seçim listeleri; hiç seçilmezse o eksende filtre uygulanmaz (tümü anlamında).
-   - **Ürün kodu:** Metin; ilgili hata tipindeki ürün kodu alanında **içerir** araması (Türkçe büyük/küçük harf duyarsız).
-   - **Hata detaylarında ara:** Boşlukla ayrılan kelimelerin **hepsi**, satırda yalnızca **hata tipi adı, hata kaynağı rozeti metni, ürün kodu ve hata mesajı detayı** birleşiminde geçmelidir (marka / DCID / platform gibi alanlarda aramaz).
-   - **Başlangıç–Bitiş tarihi:** Tarih aralığına göre kayıtlar süzülür.
-3. **Liste:** Tabloda marka, kanal, hata tipi, hata kaynağı, ürün kodu, mesaj, sipariş tarihi, DCID, platform id ve **Detayı görüntüle** bağlantısı yer alır.
-4. **Detay:** Satırdaki **Detayı görüntüle** veya ilgili eylem, tam ekran üstü **Hata Detayı** penceresini açar: sipariş alanları, kırmızı başlıklı **Hata Mesajı** kutusu ve altta **sabit** bilgilendirme metni (hata sebepleri maddeleri). Dışarı tıklama, **×** veya **Esc** ile kapanır.
-5. **Sayfalama:** Alt bölümde sayfa boyutu ve önceki/sonraki sayfa ile gezinilir.
-6. **Excel:** Mevcut filtrelenmiş sonuç kümesi dışa aktarılabilir.
-
-### Restoran Kanal Durumu ekranı
-
-1. **Amaç:** Restoranların kanallara göre açık/kapalı (ve özet) durumlarının tabloda ve üst özet widget’larda izlenmesi.
-2. **Arama ve filtreler:** İsim / global id ve diğer görünür alanlarda **çok kelimeli** arama; marka, şehir, kanal seçimi ve kanal durumu filtreleri birlikte çalışır. Kanal seçimi yoksa tablo bilinçli olarak boşaltılır (performans için).
-3. **Satır tıklama:** Bir restoran satırına tıklanınca **Hata Detayı** popup’ı açılır; içerik son kapama kaydından ve satır alanlarından türetilir (sipariş DCID, platform, kanal, marka, tarih, mesaj + aynı sabit alt metin).
-4. **Mock veri:** Excel ile örnek restoran verisi yüklenebilir; kapama sebepleri için ayrı mock yükleme alanları vardır. Veriler tarayıcı **localStorage** ile saklanabilir (cihaza özeldir).
-
-### Üretim paneline taşırken dikkat
-
-- Bugünkü davranış **istemci tarafında birleşik filtreleme ve mock** ağırlıklıdır; müşteri panelinde **sunucu tarafı yetki, sayfalama ve audit** netleştirilmelidir.
-- Menüde görünen ama içi boş olan maddeler, müşteri sözleşmesine göre ya geliştirilecek ya da gizlenecek şekilde ürünleştirilmelidir.
-
-## Önerilen “asıl çalışma” başlıkları (ürün / mühendislik)
-
-1. **Entegrasyon:** Mail / bildirim pipeline’ı ile aynı şemada API veya event tüketimi.
-2. **Kimlik ve yetki:** Müşteri kullanıcıları için oturum, rol ve veri sınırı (yalnızca kendi marka/şube verisi vb.).
-3. **Üretim kalitesi:** Hata yönetimi, loglama, performans, sayfalama ve gerçek tarih aralığı sorguları.
-4. **Teslim:** Müşteri dokümantasyonu, eğitim ve kabul testleri (bu MD + Teams bağlamı ile hizalanmış kabul kriterleri).
+| | |
+|---|---|
+| **Prototip (kod)** | [github.com/elifayvali/cancelpanel](https://github.com/elifayvali/cancelpanel) |
+| **ADO Wiki** | [Mail İletilen Hata Bildirimleri (Kanal Sipariş Hata Listesi)](https://dev.azure.com/ZeniaProjects/Hospitality/_wiki/wikis/OnlineChannels.wiki/2659/Mail-%C4%B0letilen-Hata-Bildirimleri-%28Kanal-Sipari%C5%9F-Hata-Listesi%29) |
+| **Wiki metni (kopya)** | [`docs/wiki/Mail-İletilen-Hata-Bildirimleri-(Kanal-Sipariş-Hata-Listesi).md`](wiki/Mail-İletilen-Hata-Bildirimleri-(Kanal-Sipariş-Hata-Listesi).md) |
+| **Teams** | Cancelpanel iptal bildirimleri (iş paketi mutabakatı) |
 
 ---
 
-*Bu dosya, Teams’teki Cancelpanel sohbeti ile depodaki mevcut panel arasında köprü kurmak ve “panel = yapılacak işin görünür tanımı” ilkesini netleştirmek için oluşturulmuştur.*
+## 2. CancelPanel ile asıl işin ilişkisi
+
+- **CancelPanel:** Hedef panelin UI, filtreler, tablo ve detay popup düzeninin somut prototipi.
+- **Asıl yapılacak iş:** Gerçek API entegrasyonu, müşteri kimliği/yetkisi, sunucu tarafı sayfalama, audit, loglama ve operasyonel süreçlerin üretime alınması.
+- Prototip tek başına “tamamlandı” anlamına gelmez; **ürünün görünür yüzü ve kabul kriterlerinin taşıyıcısıdır**.
+
+---
+
+## 3. Uygulama yapısı (menü)
+
+Sol menü + üst çubuk + ana içerik.
+
+| Menü | Durum |
+|------|--------|
+| **Kanal Sipariş Hataları** | Aktif — bu dokümanın ana konusu |
+| **Restoran Kanal Durumu** | Aktif — kanal açık/kapalı (kapsam daraltılabilir) |
+| Dashboard, Sipariş Özeti, Sipariş Arama, … | Yer tutucu (boş panel) |
+
+Menü daraltılabilir. Üst barda örnek kullanıcı bilgisi gösterilir (statik; gerçek oturum yok).
+
+---
+
+## 4. Kanal Sipariş Hataları — ekran işleyişi
+
+### 4.1 Veri kaynağı
+
+- Varsayılan: **mock** veri (`useMock`).
+- Canlı API: entegrasyonla açılabilir (`useMock={false}`).
+- Metin araması ve türetilmiş alanlar (hata kaynağı vb.) istemci tarafında filtrelenir.
+
+### 4.2 Hata sebebi tipleri
+
+Açılışta **hiçbir hata sebebi seçili değildir** → **tüm tipler** listelenir (marka/kanal ile aynı mantık).
+
+| Teknik id | Ekranda (Hata sebebi) |
+|-----------|------------------------|
+| `order-inject-error` | Ürün Mutfağa Gönderilemedi |
+| `main-product-not-found` | Ana Ürün Eşleşmedi |
+| `sub-product-not-found` | Alt ürün/Opsiyon Bulunamadı |
+| `remote-code-null` | Kanal Eksik/Hatalı Mapping |
+
+### 4.3 Filtreler
+
+Filtre değişince liste **otomatik güncellenir**. **«Ara» düğmesi yoktur.** **Yenile** ikonu aynı filtrelerle listeyi tekrar yükler.
+
+Tüm çoklu seçim dropdown’larında panel üstünde:
+
+- **Select all** — menüdeki tüm seçenekleri işaretler  
+- **Remove all** — tüm seçimleri kaldırır (boş = “tümü” anlamında, marka/kanal/hata sebebi için)
+
+| Filtre | Davranış |
+|--------|----------|
+| **Hata sebebi** | Çoklu seçim. Boş = tüm sebepler. |
+| **Marka** | Çoklu seçim. Boş = tüm markalar. |
+| **Kanal** | Çoklu seçim. Boş = tüm kanallar. |
+| **Hata kaynağı** | Çoklu seçim: CRM, Platform, Platform / CRM. Boş = tüm kaynaklar. |
+| **Ürün kodu** | Metin. Birden fazla kod **virgül** veya **noktalı virgül** ile (ör. `47821;36677`, `33087, 114006`). Çoklu kod: **OR**, tam eşleşme. Tek kod: kısmi arama. ~**400 ms** gecikme. |
+| **Hata detaylarında ara** | Metin. Boşlukla ayrılmış kelimelerin **hepsi** şu alanlarda geçmeli: **hata tipi**, **hata kaynağı**, **ürün kodu**, **hata mesajı detayı**. ~**400 ms** gecikme. |
+| **Başlangıç / Bitiş** | Tarih aralığı; değişince **anında** uygulanır. |
+
+**Gecikme özeti:** Dropdown, tarih → anında. Ürün kodu ve hata detaylarında ara → ~400 ms (her tuşta istek gitmez).
+
+### 4.4 Sonuç tablosu
+
+| Sütun |
+|-------|
+| Marka |
+| Kanal |
+| Hata tipi |
+| Hata Kaynağı |
+| Ürün Kodu |
+| Hata Mesajı Detayı |
+| Sipariş tarihi |
+| Sipariş Dcid |
+| Platform Id |
+| Detay (**Detayı görüntüle**) |
+
+- **Sayfalama:** Alt bölüm — sayfa boyutu, önceki/sonraki.
+- **Excel:** Filtrelenmiş sonuç kümesi dışa aktarılır.
+
+### 4.5 Hata Detayı popup
+
+**Detayı görüntüle** (ve Restoran Kanal Durumu’nda satır tıklama) ortak **Hata Detayı** düzenini açar:
+
+1. Kırmızı **!** + **Hata Detayı** başlığı, sağ üst **×**
+2. **SİPARİŞ DCID**, **PLATFORM ID** (gri pill), **KANAL**, **MARKA**, **SİPARİŞ TARİHİ**
+3. Çerçeveli **Hata Mesajı** kutusu (satıra özel)
+4. Gri kutu: sabit açıklama + **Hata Sebepleri** (3 madde, kırmızı nokta listesi)
+
+**Kapanma:** dışarı tıklama, **×**, **Esc**.
+
+Kanal Sipariş Hataları satırından alanlar: `orderDcid`, `platformId`, `channel`, `brand`, sipariş tarihi, `buildErrorMessage`.
+
+---
+
+## 5. Restoran Kanal Durumu (kısa)
+
+- Kanal açık/kapalı tablo ve özet widget’lar.
+- Çok kelimeli arama; marka, şehir, kanal, durum filtreleri.
+- Satır tıklanınca aynı **Hata Detayı** popup.
+- Mock: Excel yükleme, tarayıcı **localStorage** (cihaza özel).
+
+---
+
+## 6. Üretim hedefi
+
+| # | Başlık |
+|---|--------|
+| 1 | Mail / bildirim pipeline ile API veya event entegrasyonu |
+| 2 | Müşteri oturumu, rol, marka/şube veri sınırı |
+| 3 | Sunucu tarafı sayfalama, audit, loglama, performans |
+| 4 | Müşteri dokümantasyonu, eğitim, kabul testleri |
+
+**Üretimde netleştirilecekler:**
+
+- Boş hata sebebi = tüm tipler → API sözleşmesi  
+- Çoklu ürün kodu ve metin arama → sunucu sorgu parametreleri  
+- Mock yerine yetkili canlı veri  
+
+---
+
+## 7. Prototip değişiklik özeti
+
+| Özellik |
+|---------|
+| Türkçe hata sebebi başlıkları |
+| Hata kaynağı filtresi (CRM / Platform / Platform / CRM) |
+| Otomatik filtre; Ara kaldırıldı |
+| Ürün kodu: virgül ve `;` ile çoklu arama |
+| Dropdown Select all / Remove all |
+| Ortak Hata Detayı popup (`HataDetayPanel` + sabit bilgi kutusu) |
+| Hata detaylarında ara: yalnızca hata tipi, kaynak, ürün kodu, mesaj |
+| Hata sebebi açılışta boş = tüm tipler |
+
+---
+
+*Son güncelleme: CancelPanel `main` dalı — Kanal Sipariş Hataları ekranı.*
