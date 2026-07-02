@@ -4,16 +4,23 @@ export function PlatformComparisonToolbar({
   idSuffix = '',
   channelId,
   brand,
+  productName,
+  ncrId,
   formError,
   onChannelIdChange,
   onBrandChange,
+  onProductNameChange,
+  onNcrIdChange,
   onCheck,
 }) {
   const channelInputId = `ppc-channel-id${idSuffix}`
+  const productNameInputId = `ppc-product-name${idSuffix}`
+  const ncrIdInputId = `ppc-ncr-id${idSuffix}`
 
   return (
     <>
-      <div className="pc-platform-toolbar">
+      <div className="pc-platform-toolbar-wrap">
+        <div className="pc-platform-toolbar">
         <div className="pc-platform-toolbar__field">
           <label className="pc-platform-toolbar__label" htmlFor={channelInputId}>
             Restoran Kanal ID
@@ -47,6 +54,42 @@ export function PlatformComparisonToolbar({
             Kontrol Et
           </button>
         </div>
+      </div>
+
+      <div className="pc-platform-toolbar pc-platform-toolbar--filters">
+        <div className="pc-platform-toolbar__field">
+          <label className="pc-platform-toolbar__label" htmlFor={productNameInputId}>
+            Ürün İsmi
+          </label>
+          <input
+            id={productNameInputId}
+            type="text"
+            className="pc-input"
+            value={productName}
+            onChange={onProductNameChange}
+            placeholder="En az 3 karakter"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
+
+        <div className="pc-platform-toolbar__field">
+          <label className="pc-platform-toolbar__label" htmlFor={ncrIdInputId}>
+            NCR ID
+          </label>
+          <input
+            id={ncrIdInputId}
+            type="text"
+            className="pc-input"
+            value={ncrId}
+            onChange={onNcrIdChange}
+            placeholder="En az 3 karakter"
+            inputMode="text"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
+      </div>
       </div>
 
       {formError ? <p className="pc-platform-error">{formError}</p> : null}

@@ -1,25 +1,75 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PlatformComparisonToolbar } from './PlatformComparisonToolbar'
 import { PlatformMissingInfoBox, PlatformMissingInfoModal } from './PlatformMissingInfo'
-import { diffLabel, filterDiffRows, formatTl, getCatalogForBrand } from './platformPriceComparisonMock'
+import PlatformResultsPagination from './PlatformResultsPagination'
+import PlatformProductResults from './PlatformProductResults'
+import {
+  filterDiffRows,
+  filterProductRows,
+  getCatalogForBrand,
+  isExpandableProduct,
+} from './platformPriceComparisonMock'
 import './PriceComparison.css'
 
 export default function PlatformPriceComparison() {
   const [channelId, setChannelId] = useState('')
   const [brand, setBrand] = useState('')
-  const [rows, setRows] = useState(null)
+  const [productName, setProductName] = useState('')
+  const [ncrId, setNcrId] = useState('')
+  const [baseRows, setBaseRows] = useState(null)
   const [formError, setFormError] = useState('')
   const [checked, setChecked] = useState(false)
   const [infoModalOpen, setInfoModalOpen] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [expandedProduct, setExpandedProduct] = useState(null)
+
+  const rows = useMemo(() => {
+    if (!baseRows) return null
+    return filterProductRows(baseRows, { productName, ncrId })
+  }, [baseRows, productName, ncrId])
+
+  useEffect(() => {
+    setPage(1)
+    setExpandedProduct(null)
+  }, [productName, ncrId, baseRows, pageSize])
+
+  useEffect(() => {
+    setExpandedProduct(null)
+  }, [page])
+
+  const paginatedRows = useMemo(() => {
+    if (!rows) return []
+    const start = (page - 1) * pageSize
+    return rows.slice(start, start + pageSize)
+  }, [rows, page, pageSize])
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil((rows?.length ?? 0) / pageSize) || 1), [rows, pageSize])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
 
   const handleChannelIdChange = useCallback((e) => {
     setChannelId(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))
     setChecked(false)
+    setBaseRows(null)
+    setFormError('')
   }, [])
 
   const handleBrandChange = useCallback((v) => {
     setBrand(v)
     setChecked(false)
+    setBaseRows(null)
+    setFormError('')
+  }, [])
+
+  const handleProductNameChange = useCallback((e) => {
+    setProductName(e.target.value)
+  }, [])
+
+  const handleNcrIdChange = useCallback((e) => {
+    setNcrId(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))
   }, [])
 
   const handleCheck = useCallback(() => {
@@ -32,10 +82,16 @@ export default function PlatformPriceComparison() {
       setFormError('Marka seçiniz.')
       return
     }
-    setRows(filterDiffRows(getCatalogForBrand(brand)))
+    setBaseRows(filterDiffRows(getCatalogForBrand(brand)))
     setChecked(true)
+    setPage(1)
     setInfoModalOpen(true)
   }, [channelId, brand])
+
+  const handleToggleProduct = useCallback((name) => {
+    if (!isExpandableProduct(name)) return
+    setExpandedProduct((prev) => (prev === name ? null : name))
+  }, [])
 
   return (
     <div className="pc-dash">
@@ -62,9 +118,13 @@ export default function PlatformPriceComparison() {
           <PlatformComparisonToolbar
             channelId={channelId}
             brand={brand}
+            productName={productName}
+            ncrId={ncrId}
             formError={formError}
             onChannelIdChange={handleChannelIdChange}
             onBrandChange={handleBrandChange}
+            onProductNameChange={handleProductNameChange}
+            onNcrIdChange={handleNcrIdChange}
             onCheck={handleCheck}
           />
 
@@ -72,56 +132,22 @@ export default function PlatformPriceComparison() {
             <>
               <PlatformMissingInfoBox onClick={() => setInfoModalOpen(true)} />
               {rows.length > 0 ? (
-            <div className="pc-platform-grid">
-              <div className="pc-platform-col">
-                <h3 className="pc-platform-col__title">Kanal Ürünleri</h3>
-                <ul className="pc-platform-list">
-                  {rows.map((row) => (
-                    <li key={`ch-${row.name}`} className="pc-platform-row">
-                      <span className="pc-platform-cell pc-platform-cell--name">{row.name}</span>
-                      <span className="pc-platform-cell pc-platform-cell--price">{formatTl(row.channelPrice)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="pc-platform-col">
-                <h3 className="pc-platform-col__title">CCS Ürünleri</h3>
-                <ul className="pc-platform-list">
-                  {rows.map((row) => (
-                    <li key={`ccs-${row.name}`} className="pc-platform-row">
-                      <span className="pc-platform-cell pc-platform-cell--name">{row.name}</span>
-                      <span className="pc-platform-cell pc-platform-cell--price">{formatTl(row.ccsPrice)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="pc-platform-col pc-platform-col--result">
-                <h3 className="pc-platform-col__title">Karşılaştırma Sonucu</h3>
-                <ul className="pc-platform-list">
-                  {rows.map((row) => {
-                    const { text, tone } = diffLabel(row.channelPrice, row.ccsPrice)
-                    return (
-                      <li key={`res-${row.name}`} className="pc-platform-row pc-platform-row--result">
-                        <span
-                          className={`pc-platform-cell pc-platform-cell--diff pc-platform-cell--diff-${tone}`}
-                          title={
-                            tone === 'match'
-                              ? 'Fiyatlar eşit'
-                              : `Kanal − CCS: ${row.channelPrice - row.ccsPrice} TL`
-                          }
-                        >
-                          {text}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            </div>
+                <>
+                <PlatformProductResults
+                  rows={paginatedRows}
+                  expandedProduct={expandedProduct}
+                  onToggleProduct={handleToggleProduct}
+                />
+                <PlatformResultsPagination
+                  total={rows.length}
+                  page={page}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
+                </>
               ) : (
-                <p className="pc-platform-empty">Fiyat farkı bulunan ürün yok — tüm eşleşen kayıtlar eşit.</p>
+                <p className="pc-platform-empty">Seçilen filtrelere uygun fiyat farkı bulunan ürün yok.</p>
               )}
             </>
           ) : (

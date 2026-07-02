@@ -18,7 +18,9 @@ class RestaurantChannelErrorBoundary extends Component {
       return (
         <div className="restaurant-panel-fallback">
           <div className="content-panel-error">
-            <h2 className="content-panel-error__title">Restoran Kanal Durumu yüklenemedi</h2>
+            <h2 className="content-panel-error__title">
+              {this.props.title ?? 'Restoran Kanal Durumu yüklenemedi'}
+            </h2>
             <p className="content-panel-error__msg">{this.state.error.message}</p>
             <p className="content-panel-error__hint">
               Tarayıcıda bu site için kayıtlı veriyi temizleyin veya gizli pencerede açın. Sorun sürerse
@@ -389,7 +391,11 @@ function App() {
           ) : null}
           {activeMenu === 'channel-order-errors' ? <ChannelOrderErrors /> : null}
           {activeMenu === 'price-compare-define-restaurant' ? <DefineRestaurant /> : null}
-          {activeMenu === 'price-compare-platform' ? <PlatformPriceComparison /> : null}
+          {activeMenu === 'price-compare-platform' ? (
+            <RestaurantChannelErrorBoundary title="Platform Fiyat Karşılaştırma yüklenemedi">
+              <PlatformPriceComparison />
+            </RestaurantChannelErrorBoundary>
+          ) : null}
         </section>
       </main>
     </div>
