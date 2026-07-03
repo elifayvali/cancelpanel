@@ -9,8 +9,7 @@ export function diffLabel(channelPrice, ccsPrice, { priceDiff, highlightOnly } =
     if (diff === 0) {
       return highlightOnly ? { text: '—', tone: 'high' } : { text: '—', tone: 'match' }
     }
-    const sign = diff > 0 ? '+' : '−'
-    return { text: `${sign}${Math.abs(diff)} TL`, tone: 'high' }
+    return { text: `${Math.abs(diff)} TL`, tone: 'high' }
   }
 
   const channel = Number(channelPrice ?? 0)
@@ -19,6 +18,5 @@ export function diffLabel(channelPrice, ccsPrice, { priceDiff, highlightOnly } =
   if (diff === 0) {
     return highlightOnly ? { text: '—', tone: 'high' } : { text: '—', tone: 'match' }
   }
-  const sign = diff > 0 ? '+' : '−'
-  return { text: `${sign}${Math.abs(diff)} TL`, tone: 'high' }
+  return { text: `${Math.abs(diff)} TL`, tone: 'high' }
 }
