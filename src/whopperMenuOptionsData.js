@@ -1,5 +1,7 @@
 /** WHOPPER MENÜ opsiyon grupları ve alt ürünler (mock) */
 
+import { optionHasPriceDiff } from './priceDiff'
+
 export function formatSalePrice(amount) {
   const value = Number(amount ?? 0)
   return (
@@ -7,9 +9,26 @@ export function formatSalePrice(amount) {
   )
 }
 
-function item(name, channelPrice = 0, ccsPrice = channelPrice) {
-  return { name, channelPrice, ccsPrice }
+function item(name, channelPrice = 0, ccsPrice = channelPrice, priceDiff) {
+  const entry = { name, channelPrice, ccsPrice }
+  if (priceDiff != null) entry.priceDiff = priceDiff
+  return entry
 }
+
+/** WHOPPER burger opsiyonları */
+export const WHOPPER_OPTIONS = [
+  {
+    id: 'ekstra',
+    name: 'Ekstra',
+    items: [
+      item('Ranch Sos', 10, 2, 2),
+      item('Ayran (Büyük - 300ml)', 55, 55, 5),
+    ],
+  },
+].map((group) => ({
+  ...group,
+  count: group.items.length,
+}))
 
 export const WHOPPER_MENU_OPTIONS = [
   {
@@ -86,3 +105,28 @@ export const WHOPPER_MENU_OPTIONS = [
   ...group,
   count: group.items.length,
 }))
+
+export function flattenProductOptionItems(options) {
+  return options
+    .flatMap((group) =>
+      group.items.map((entry) => ({
+        ...entry,
+        key: `${group.id}-${entry.name}`,
+      })),
+    )
+    .filter(optionHasPriceDiff)
+}
+
+export function productOptionsHaveDiffs(options) {
+  return flattenProductOptionItems(options).length > 0
+}
+
+/** @deprecated use flattenProductOptionItems */
+export function flattenWhopperOptionItems(options = WHOPPER_MENU_OPTIONS) {
+  return flattenProductOptionItems(options)
+}
+
+/** @deprecated use productOptionsHaveDiffs */
+export function whopperMenuHasOptionDiffs(options = WHOPPER_MENU_OPTIONS) {
+  return productOptionsHaveDiffs(options)
+}

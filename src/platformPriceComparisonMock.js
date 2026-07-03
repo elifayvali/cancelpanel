@@ -1,5 +1,9 @@
 /** Mock kanal / CCS fiyatları — Kontrol Et sonrası gösterilir */
-import { WHOPPER_MENU_OPTIONS } from './whopperMenuOptionsData'
+import {
+  WHOPPER_MENU_OPTIONS,
+  WHOPPER_OPTIONS,
+  productOptionsHaveDiffs,
+} from './whopperMenuOptionsData'
 
 export const FILTER_MIN_CHARS = 3
 
@@ -46,6 +50,27 @@ function buildMockCatalog() {
     const channelPrice = base + 8 + (index % 4) * 3
     let ccsPrice = base + (index % 5)
     if (ccsPrice === channelPrice) ccsPrice -= 5
+
+    if (name.toUpperCase() === 'WHOPPER') {
+      const burgerPrice = 199
+      return {
+        name,
+        channelPrice: burgerPrice,
+        ccsPrice: burgerPrice,
+        ncrId: NCR_IDS[index % NCR_IDS.length],
+      }
+    }
+
+    if (name.toUpperCase().includes('WHOPPER MENÜ')) {
+      const menuPrice = 299
+      return {
+        name,
+        channelPrice: menuPrice,
+        ccsPrice: menuPrice,
+        ncrId: NCR_IDS[index % NCR_IDS.length],
+      }
+    }
+
     return {
       name,
       channelPrice,
@@ -68,14 +93,29 @@ export const MOCK_MISSING_NOTICES = ["Double Cheeseburger CCS'te bulunamadı"]
 
 export { diffLabel } from './priceDiff'
 
-/** WHOPPER MENÜ içeren tüm ürünler genişletilebilir */
-export function isExpandableProduct(name) {
+export function isWhopperProduct(name) {
+  return name.toUpperCase() === 'WHOPPER'
+}
+
+export function isWhopperMenuProduct(name) {
   return name.toUpperCase().includes('WHOPPER MENÜ')
 }
 
+/** WHOPPER ve WHOPPER MENÜ ürünleri genişletilebilir */
+export function isExpandableProduct(name) {
+  return isWhopperProduct(name) || isWhopperMenuProduct(name)
+}
+
 export function getProductDetailContent(name) {
-  if (!isExpandableProduct(name)) return null
-  return { options: WHOPPER_MENU_OPTIONS }
+  if (isWhopperProduct(name)) return { options: WHOPPER_OPTIONS }
+  if (isWhopperMenuProduct(name)) return { options: WHOPPER_MENU_OPTIONS }
+  return null
+}
+
+export function productHasOptionDiffs(name) {
+  const detail = getProductDetailContent(name)
+  if (!detail) return false
+  return productOptionsHaveDiffs(detail.options)
 }
 
 export function formatTl(amount) {
@@ -83,7 +123,11 @@ export function formatTl(amount) {
 }
 
 export function filterDiffRows(rows) {
-  return rows.filter((row) => row.channelPrice !== row.ccsPrice)
+  return rows.filter((row) => {
+    if (row.channelPrice !== row.ccsPrice) return true
+    if (isExpandableProduct(row.name) && productHasOptionDiffs(row.name)) return true
+    return false
+  })
 }
 
 export function filterProductRows(rows, { productName = '', ncrId = '' } = {}) {

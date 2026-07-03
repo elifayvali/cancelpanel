@@ -9,6 +9,7 @@ import {
   getCatalogForBrand,
   isExpandableProduct,
 } from './platformPriceComparisonMock'
+import { exportPlatformPricesToExcel } from './platformPriceExport'
 import './PriceComparison.css'
 
 export default function PlatformPriceComparison() {
@@ -93,6 +94,11 @@ export default function PlatformPriceComparison() {
     setExpandedProduct((prev) => (prev === name ? null : name))
   }, [])
 
+  const handleDownload = useCallback(() => {
+    if (!rows?.length) return
+    exportPlatformPricesToExcel(rows)
+  }, [rows])
+
   return (
     <div className="pc-dash">
       <header className="pc-header">
@@ -144,6 +150,8 @@ export default function PlatformPriceComparison() {
                   pageSize={pageSize}
                   onPageChange={setPage}
                   onPageSizeChange={setPageSize}
+                  onDownload={handleDownload}
+                  downloadDisabled={!rows.length}
                 />
                 </>
               ) : (

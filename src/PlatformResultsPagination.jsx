@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50]
 
@@ -28,6 +28,8 @@ export default function PlatformResultsPagination({
   pageSize,
   onPageChange,
   onPageSizeChange,
+  onDownload,
+  downloadDisabled = false,
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1)
   const safePage = Math.min(page, totalPages)
@@ -92,6 +94,17 @@ export default function PlatformResultsPagination({
             <ChevronRight size={18} />
           </button>
         </div>
+
+        <button
+          type="button"
+          className="pc-platform-pager__download"
+          onClick={onDownload}
+          disabled={downloadDisabled || total === 0}
+          title="Filtrelenmiş tüm sonuçları Excel dosyası olarak indirir"
+        >
+          <Download size={16} aria-hidden />
+          <span>Dosya indir</span>
+        </button>
       </div>
     </div>
   )
