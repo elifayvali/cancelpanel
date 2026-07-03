@@ -21,8 +21,8 @@ export const WHOPPER_OPTIONS = [
     id: 'ekstra',
     name: 'Ekstra',
     items: [
-      item('Ranch Sos', 10, 2, 2),
-      item('Ayran (Büyük - 300ml)', 55, 55, 5),
+      item('Ranch Sos', 10, 2),
+      item('Ayran (Büyük - 300ml)', 55, 50),
     ],
   },
 ].map((group) => ({
