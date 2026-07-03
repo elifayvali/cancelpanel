@@ -51,6 +51,15 @@ function buildMockCatalog() {
     let ccsPrice = base + (index % 5)
     if (ccsPrice === channelPrice) ccsPrice -= 5
 
+    if (name.toUpperCase() === 'AYRAN') {
+      return {
+        name,
+        channelPrice: 53,
+        ccsPrice: 50,
+        ncrId: NCR_IDS[index % NCR_IDS.length],
+      }
+    }
+
     if (name.toUpperCase() === 'WHOPPER') {
       const burgerPrice = 199
       return {
