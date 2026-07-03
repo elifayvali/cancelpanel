@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { WhopperMenuOptions } from './WhopperMenuOptions'
 import {
@@ -29,16 +28,6 @@ function ProductNameCell({ name, expanded, onToggle }) {
 }
 
 export default function PlatformProductResults({ rows, expandedProduct, onToggleProduct }) {
-  const [expandedOptionId, setExpandedOptionId] = useState(null)
-
-  useEffect(() => {
-    setExpandedOptionId(null)
-  }, [expandedProduct])
-
-  const handleToggleOption = useCallback((optionId) => {
-    setExpandedOptionId((prev) => (prev === optionId ? null : optionId))
-  }, [])
-
   return (
     <div className="pc-platform-results">
       <div className="pc-platform-results__header">
@@ -94,11 +83,7 @@ export default function PlatformProductResults({ rows, expandedProduct, onToggle
                   role="region"
                   aria-label={`${row.name} opsiyonları`}
                 >
-                  <WhopperMenuOptions
-                    options={detail.options}
-                    expandedOptionId={expandedOptionId}
-                    onToggleOption={handleToggleOption}
-                  />
+                  <WhopperMenuOptions options={detail.options} />
                 </div>
               ) : null}
             </li>
