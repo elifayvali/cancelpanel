@@ -23,6 +23,8 @@ const BAND_TYPES = [
   { id: 'paket', label: 'Paket' },
 ]
 
+const COUNTRIES = ['Türkiye', 'Kıbrıs']
+
 const STORAGE_KEY = 'price-comparison-restaurant-matches'
 
 /** Daha önce kaydedilmiş gibi görünen mock restoranlar */
@@ -107,11 +109,12 @@ function buildRestaurantPool(saved) {
 }
 
 export default function DefineRestaurant() {
+  const [country, setCountry] = useState('Türkiye')
   const [brand, setBrand] = useState('')
   const [channelId, setChannelId] = useState('')
   const [productGroup, setProductGroup] = useState('')
   const [priceBand, setPriceBand] = useState('')
-  const [bandType, setBandType] = useState('')
+  const [bandType, setBandType] = useState('paket')
   const [toast, setToast] = useState(null)
   const [formError, setFormError] = useState('')
   const [channelFocused, setChannelFocused] = useState(false)
@@ -157,6 +160,7 @@ export default function DefineRestaurant() {
   const applyRestaurantSuggestion = useCallback((item) => {
     setChannelId(item.channelId)
     setBrand(item.brand)
+    if (item.country) setCountry(item.country)
     if (item.productGroup) setProductGroup(item.productGroup)
     if (item.priceBand) setPriceBand(item.priceBand)
     if (item.bandType) setBandType(item.bandType)
@@ -191,6 +195,7 @@ export default function DefineRestaurant() {
     const typeLabel = BAND_TYPES.find((t) => t.id === bandType)?.label ?? bandType
 
     saveMatch({
+      country,
       brand,
       channelId: channelId.trim(),
       productGroup,
@@ -204,7 +209,7 @@ export default function DefineRestaurant() {
     setSavedTick((n) => n + 1)
     setToast('Restoran eşleştirmesi kaydedildi.')
     setTimeout(() => setToast(null), 3200)
-  }, [brand, channelId, productGroup, priceBand, bandType, selectedBand])
+  }, [country, brand, channelId, productGroup, priceBand, bandType, selectedBand])
 
   return (
     <div className="pc-dash">
@@ -224,9 +229,7 @@ export default function DefineRestaurant() {
       <main className="pc-main">
         <section className="pc-card">
           <h2 className="pc-card__title">Restoran Tanımla</h2>
-          <p className="pc-card__desc">
-            Marka, kanal ve fiyat bandı bilgilerini eşleştirerek restoran kaydı oluşturun.
-          </p>
+          <p className="pc-card__desc">Marka, kanal ve fiyat bandı bilgilerini eşleştirerek restoran kaydı oluşturun.</p>
 
           <form
             className="pc-form"
@@ -235,6 +238,15 @@ export default function DefineRestaurant() {
               handleMatch()
             }}
           >
+            <PriceSelect
+              id="pc-country"
+              label="Ülke"
+              value={country}
+              onChange={setCountry}
+              placeholder="Ülke seçiniz"
+              options={COUNTRIES.map((c) => ({ value: c, label: c }))}
+            />
+
             <PriceSelect
               id="pc-brand"
               label="Marka"
@@ -326,7 +338,7 @@ export default function DefineRestaurant() {
 
             <div className="pc-form__actions">
               <button type="submit" className="pc-btn pc-btn--primary">
-                Eşleştir
+                Kaydet
               </button>
             </div>
           </form>

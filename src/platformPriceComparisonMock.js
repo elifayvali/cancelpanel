@@ -7,7 +7,7 @@ import {
 
 export const FILTER_MIN_CHARS = 3
 
-const NCR_IDS = ['NCR-10021', 'NCR-10035', 'NCR-10048', 'NCR-10052']
+const NCR_IDS = ['1001', '3001', '1002', '3002', '2001', '3003']
 
 const MOCK_PRODUCT_NAMES = [
   'AYRAN',
@@ -131,6 +131,11 @@ export function formatTl(amount) {
   return `${amount} TL`
 }
 
+/** NCR ID'den yalnızca rakamları çıkarır (arama ve export için) */
+export function ncrDigits(value) {
+  return String(value ?? '').replace(/\D/g, '')
+}
+
 export function filterDiffRows(rows) {
   return rows.filter((row) => {
     if (row.channelPrice !== row.ccsPrice) return true
@@ -142,13 +147,13 @@ export function filterDiffRows(rows) {
 export function filterProductRows(rows, { productName = '', ncrId = '' } = {}) {
   const nameQ = productName.trim()
   const ncrQ = ncrId.trim()
-  const nameActive = nameQ.length >= FILTER_MIN_CHARS
+  const nameActive = nameQ.length > 0
   const ncrActive = ncrQ.length >= FILTER_MIN_CHARS
   const nameLower = nameQ.toLowerCase()
-  const ncrLower = ncrQ.toLowerCase()
+  const ncrQueryDigits = ncrDigits(ncrQ)
 
   return rows.filter((row) => {
-    if (ncrActive && !row.ncrId.toLowerCase().includes(ncrLower)) return false
+    if (ncrActive && !ncrDigits(row.ncrId).includes(ncrQueryDigits)) return false
     if (nameActive && !row.name.toLowerCase().includes(nameLower)) return false
     return true
   })

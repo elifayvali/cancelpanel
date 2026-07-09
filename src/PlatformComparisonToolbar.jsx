@@ -7,6 +7,7 @@ export function PlatformComparisonToolbar({
   productName,
   ncrId,
   formError,
+  showFilters = false,
   onChannelIdChange,
   onBrandChange,
   onProductNameChange,
@@ -56,6 +57,7 @@ export function PlatformComparisonToolbar({
         </div>
       </div>
 
+      {showFilters ? (
       <div className="pc-platform-toolbar pc-platform-toolbar--filters">
         <div className="pc-platform-toolbar__field">
           <label className="pc-platform-toolbar__label" htmlFor={productNameInputId}>
@@ -67,7 +69,7 @@ export function PlatformComparisonToolbar({
             className="pc-input"
             value={productName}
             onChange={onProductNameChange}
-            placeholder="En az 3 karakter"
+            placeholder="Ürün adı girin"
             autoComplete="off"
             spellCheck={false}
           />
@@ -83,13 +85,14 @@ export function PlatformComparisonToolbar({
             className="pc-input"
             value={ncrId}
             onChange={onNcrIdChange}
-            placeholder="En az 3 karakter"
-            inputMode="text"
+            placeholder="Örn. 1001"
+            inputMode="numeric"
             autoComplete="off"
             spellCheck={false}
           />
         </div>
       </div>
+      ) : null}
       </div>
 
       {formError ? <p className="pc-platform-error">{formError}</p> : null}

@@ -1,10 +1,14 @@
 import * as XLSX from 'xlsx'
 import { diffLabel } from './priceDiff'
 import { flattenProductOptionItems } from './whopperMenuOptionsData'
-import { getProductDetailContent } from './platformPriceComparisonMock'
+import { getProductDetailContent, ncrDigits } from './platformPriceComparisonMock'
 
 function diffText(channelPrice, ccsPrice, { priceDiff, highlightOnly } = {}) {
   return diffLabel(channelPrice, ccsPrice, { priceDiff, highlightOnly }).text
+}
+
+function formatNcrIdForExport(ncrId) {
+  return ncrDigits(ncrId)
 }
 
 /**
@@ -25,7 +29,7 @@ export function exportPlatformPricesToExcel(rows) {
       'Kanalda Tanımlı Fiyat': row.channelPrice,
       "CCS'te Tanımlı Fiyat": row.ccsPrice,
       'Fiyat Farkı': diffText(row.channelPrice, row.ccsPrice, { highlightOnly }),
-      'NCR ID': row.ncrId ?? '',
+      'NCR ID': formatNcrIdForExport(row.ncrId),
     })
 
     for (const option of options) {

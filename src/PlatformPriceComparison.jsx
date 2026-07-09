@@ -70,7 +70,7 @@ export default function PlatformPriceComparison() {
   }, [])
 
   const handleNcrIdChange = useCallback((e) => {
-    setNcrId(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))
+    setNcrId(e.target.value.replace(/[^0-9]/g, ''))
   }, [])
 
   const handleCheck = useCallback(() => {
@@ -117,9 +117,7 @@ export default function PlatformPriceComparison() {
       <main className="pc-main pc-main--wide">
         <section className="pc-card pc-card--platform">
           <h2 className="pc-card__title">Platform Fiyat Karşılaştırma</h2>
-          <p className="pc-card__desc">
-            Kanal ve CCS ürün fiyatlarını restoran kanal ID ve marka ile karşılaştırın.
-          </p>
+          <p className="pc-card__desc">Kanal restoranı ve markasını seçerek, kanal ile CCS arasındaki ürün ve opsiyon fiyatlarını karşılaştırın.</p>
 
           <PlatformComparisonToolbar
             channelId={channelId}
@@ -127,6 +125,7 @@ export default function PlatformPriceComparison() {
             productName={productName}
             ncrId={ncrId}
             formError={formError}
+            showFilters={checked}
             onChannelIdChange={handleChannelIdChange}
             onBrandChange={handleBrandChange}
             onProductNameChange={handleProductNameChange}

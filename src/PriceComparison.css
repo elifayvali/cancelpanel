@@ -98,7 +98,8 @@
   margin: 8px 0 0;
   font-size: 13px;
   color: #7a849c;
-  max-width: 52ch;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 /* ----- Form layout (wireframe: label sol, alan sağ) ----- */
