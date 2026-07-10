@@ -1,5 +1,7 @@
 # Platform Fiyat Karşılaştırma — Çalışma Mantığı
 
+> **Kapsamlı analiz:** Restoran Tanımla ve Platform ekranlarının birlikte ele alındığı güncel tasarım dokümanı için bkz. [`Fiyat-Karsilastirma-Tasarim-Analiz.md`](./Fiyat-Karsilastirma-Tasarim-Analiz.md)
+
 Bu doküman, CancelPanel uygulamasındaki **Platform Fiyat Karşılaştırma** ekranının iş akışını, veri modelini ve teknik mimarisini açıklar.
 
 ---
@@ -57,10 +59,12 @@ Başarılı doğrulamada:
 
 ### 2.3 Sonradan filtreleme
 
-**Ürün İsmi** ve **NCR ID** alanları, Kontrol Et sonrası anlık filtre olarak çalışır (yeniden sorgu gerekmez):
+**Ürün İsmi** ve **NCR ID** alanları, **Kontrol Et sonrası** görünür ve anlık filtre olarak çalışır (yeniden sorgu gerekmez):
 
-- Her iki alan için minimum **3 karakter** gerekir.
-- Kısmi eşleşme (içerir) mantığı kullanılır; büyük/küçük harf duyarsızdır.
+| Filtre | Kural |
+|--------|-------|
+| Ürün İsmi | Herhangi bir karakter; kısmi eşleşme; büyük/küçük harf duyarsız |
+| NCR ID | Min. 3 rakam; yalnızca rakam girişi; rakam eşleşmesi |
 
 ---
 
@@ -81,7 +85,7 @@ Başarılı doğrulamada:
 
 \* WHOPPER MENÜ BÜYÜK, ÇİFT, KİNG, JR dahil
 
-Her ürüne bir **NCR ID** atanır (`NCR-10021`, `NCR-10035`, … döngüsel).
+Her ürüne bir **NCR ID** atanır (`1001`, `3001`, `1002`, … döngüsel).
 
 ### 3.2 Hangi ürünler listelenir?
 

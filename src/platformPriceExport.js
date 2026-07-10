@@ -1,17 +1,26 @@
 import * as XLSX from 'xlsx'
-import { diffLabel } from './priceDiff'
 import { flattenProductOptionItems } from './whopperMenuOptionsData'
-import { getProductDetailContent, ncrDigits } from './platformPriceComparisonMock'
+import {
+  getProductDetailContent,
+  isWhopperMenuProduct,
+  ncrDigits,
+} from './platformPriceComparisonMock'
 
-function diffText(channelPrice, ccsPrice, { priceDiff, highlightOnly } = {}) {
-  return diffLabel(channelPrice, ccsPrice, { priceDiff, highlightOnly }).text
+function absoluteDiff(channelPrice, ccsPrice, priceDiff) {
+  if (priceDiff != null) return Math.abs(Number(priceDiff))
+  return Math.abs(Number(channelPrice ?? 0) - Number(ccsPrice ?? 0))
 }
 
-function formatNcrIdForExport(ncrId) {
-  return ncrDigits(ncrId)
+function controlTypeForProduct(name) {
+  return isWhopperMenuProduct(name) ? 'Menü' : 'Ürün'
 }
 
 /**
+ * Excel satırları:
+ * | Ürün | Kontrol Tipi | Opsiyon | Kanal | CCS | Fark |
+ * Ana ürün/menü → Tip: Ürün veya Menü, Opsiyon: —
+ * Farklı opsiyon → Tip: Opsiyon, Ürün: bağlı ürün adı, Opsiyon: opsiyon adı
+ *
  * @param {Array<{ name: string, channelPrice: number, ccsPrice: number, ncrId?: string }>} rows
  */
 export function exportPlatformPricesToExcel(rows) {
@@ -22,22 +31,25 @@ export function exportPlatformPricesToExcel(rows) {
   for (const row of rows) {
     const detail = getProductDetailContent(row.name)
     const options = detail ? flattenProductOptionItems(detail.options) : []
-    const highlightOnly = options.length > 0 && row.channelPrice === row.ccsPrice
 
     sheetData.push({
-      'Ürün Adı': row.name,
-      'Kanalda Tanımlı Fiyat': row.channelPrice,
-      "CCS'te Tanımlı Fiyat": row.ccsPrice,
-      'Fiyat Farkı': diffText(row.channelPrice, row.ccsPrice, { highlightOnly }),
-      'NCR ID': formatNcrIdForExport(row.ncrId),
+      Ürün: row.name,
+      'Kontrol Tipi': controlTypeForProduct(row.name),
+      Opsiyon: '—',
+      Kanal: row.channelPrice,
+      CCS: row.ccsPrice,
+      Fark: absoluteDiff(row.channelPrice, row.ccsPrice),
+      'NCR ID': ncrDigits(row.ncrId),
     })
 
     for (const option of options) {
       sheetData.push({
-        'Ürün Adı': `  ${option.name}`,
-        'Kanalda Tanımlı Fiyat': option.channelPrice,
-        "CCS'te Tanımlı Fiyat": option.ccsPrice,
-        'Fiyat Farkı': diffText(option.channelPrice, option.ccsPrice, { priceDiff: option.priceDiff }),
+        Ürün: row.name,
+        'Kontrol Tipi': 'Opsiyon',
+        Opsiyon: option.name,
+        Kanal: option.channelPrice,
+        CCS: option.ccsPrice,
+        Fark: absoluteDiff(option.channelPrice, option.ccsPrice, option.priceDiff),
         'NCR ID': '',
       })
     }
