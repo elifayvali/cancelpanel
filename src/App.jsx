@@ -3,6 +3,8 @@ import RestaurantChannelStatus from './RestaurantChannelStatus'
 import ChannelOrderErrors from './ChannelOrderErrors'
 import DefineRestaurant from './DefineRestaurant'
 import PlatformPriceComparison from './PlatformPriceComparison'
+import VipCustomerAdd from './VipCustomerAdd'
+import VipCustomerUpdate from './VipCustomerUpdate'
 import './App.css'
 
 class RestaurantChannelErrorBoundary extends Component {
@@ -149,6 +151,16 @@ function MenuIcon({ name }) {
     )
   }
 
+  if (name === 'vip-customer') {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="8" r="3.2" />
+        <path d="M5.5 19.5c1.8-3 4.1-4.5 6.5-4.5s4.7 1.5 6.5 4.5" />
+        <path d="M17 4.5l.8 1.6 1.8.3-1.3 1.2.3 1.8L17 8.5l-1.6.9.3-1.8-1.3-1.2 1.8-.3z" />
+      </svg>
+    )
+  }
+
   if (name === 'chevron') {
     return (
       <svg {...common}>
@@ -191,6 +203,11 @@ function App() {
     activeMenu === 'price-compare' ||
     activeMenu === 'price-compare-define-restaurant' ||
     activeMenu === 'price-compare-platform'
+
+  const isVipCustomerGroupActive =
+    activeMenu === 'vip-customer' ||
+    activeMenu === 'vip-customer-add' ||
+    activeMenu === 'vip-customer-update'
 
   return (
     <div className="page">
@@ -357,6 +374,33 @@ function App() {
               Platform Fiyat Karşılaştırma
             </button>
           </div>
+
+          <div className="menu-group">
+            <button
+              type="button"
+              className={`menu-item group-open ${isVipCustomerGroupActive ? 'active' : ''}`}
+              onClick={() => setActiveMenu('vip-customer-add')}
+              aria-label="Vip Müşteri Yönetimi"
+            >
+              <span className="menu-icon"><MenuIcon name="vip-customer" /></span>
+              <span className="menu-label">Vip Müşteri Yönetimi</span>
+              <span className="chevron"><MenuIcon name="chevron" /></span>
+            </button>
+            <button
+              type="button"
+              className={`sub-menu-item ${activeMenu === 'vip-customer-add' ? 'active' : ''}`}
+              onClick={() => setActiveMenu('vip-customer-add')}
+            >
+              Yeni Vip Müşteri Ekle
+            </button>
+            <button
+              type="button"
+              className={`sub-menu-item ${activeMenu === 'vip-customer-update' ? 'active' : ''}`}
+              onClick={() => setActiveMenu('vip-customer-update')}
+            >
+              Vip Müşteri Güncelle
+            </button>
+          </div>
         </nav>
         <div className="sidebar-footer" />
       </aside>
@@ -379,7 +423,9 @@ function App() {
             activeMenu === 'restaurant-channel' ||
             activeMenu === 'channel-order-errors' ||
             activeMenu === 'price-compare-define-restaurant' ||
-            activeMenu === 'price-compare-platform'
+            activeMenu === 'price-compare-platform' ||
+            activeMenu === 'vip-customer-add' ||
+            activeMenu === 'vip-customer-update'
               ? 'content-panel'
               : 'blank-panel'
           }
@@ -396,6 +442,8 @@ function App() {
               <PlatformPriceComparison />
             </RestaurantChannelErrorBoundary>
           ) : null}
+          {activeMenu === 'vip-customer-add' ? <VipCustomerAdd /> : null}
+          {activeMenu === 'vip-customer-update' ? <VipCustomerUpdate /> : null}
         </section>
       </main>
     </div>
