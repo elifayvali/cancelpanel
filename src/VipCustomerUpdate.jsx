@@ -4,7 +4,6 @@ import { VipPhoneInput } from './VipPhoneInput'
 import {
   formatVipPhone,
   isCompleteVipPhone,
-  restDigitsFromFull,
   searchVipPhones,
   updateVipPhone,
 } from './vipPhone'
@@ -23,7 +22,7 @@ export default function VipCustomerUpdate() {
 
   const suggestions = useMemo(() => {
     if (!searchFocused) return []
-    return searchVipPhones(searchDigits || restDigitsFromFull(searchDigits))
+    return searchVipPhones(searchDigits)
   }, [searchFocused, searchDigits, listTick])
 
   useEffect(() => {
@@ -64,7 +63,7 @@ export default function VipCustomerUpdate() {
       return
     }
     if (!isCompleteVipPhone(newDigits)) {
-      setFormError('Güncel numarada 5’ten sonraki haneleri eksiksiz giriniz.')
+      setFormError('Güncel numarayı +90 (5__) ___ __ __ veya +90 (2__) ___ __ __ formatında eksiksiz giriniz.')
       return
     }
 

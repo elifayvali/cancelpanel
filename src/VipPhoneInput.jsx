@@ -2,16 +2,14 @@ import {
   VIP_PHONE_FIXED_PREFIX,
   VIP_PHONE_REST_PLACEHOLDER,
   formatVipRest,
-  normalizeVipRestDigits,
-  restDigitsFromFull,
-  toFullVipDigits,
+  normalizeVipDigits,
 } from './vipPhone'
 
 /**
- * Sabit önek +90 (5 — kullanıcı yalnızca sonrasını girer.
+ * Sabit önek +90 ( — kullanıcı (___) ___ __ __ kısmını girer.
  * @param {{
  *   id: string
- *   value: string  // tam digits (5XXXXXXXXX) veya boş
+ *   value: string  // 10 haneli ulusal digits veya boş
  *   onChange: (fullDigits: string) => void
  *   disabled?: boolean
  *   onFocus?: () => void
@@ -19,8 +17,8 @@ import {
  * }} props
  */
 export function VipPhoneInput({ id, value, onChange, disabled = false, onFocus, onBlur }) {
-  const rest = restDigitsFromFull(value)
-  const restDisplay = formatVipRest(rest)
+  const digits = normalizeVipDigits(value)
+  const restDisplay = formatVipRest(digits)
 
   return (
     <div className={`pc-phone-field ${disabled ? 'pc-phone-field--disabled' : ''}`}>
@@ -34,8 +32,7 @@ export function VipPhoneInput({ id, value, onChange, disabled = false, onFocus, 
         value={restDisplay}
         disabled={disabled}
         onChange={(e) => {
-          const nextRest = normalizeVipRestDigits(e.target.value)
-          onChange(nextRest.length ? toFullVipDigits(nextRest) : '')
+          onChange(normalizeVipDigits(e.target.value))
         }}
         onFocus={onFocus}
         onBlur={onBlur}
@@ -43,7 +40,7 @@ export function VipPhoneInput({ id, value, onChange, disabled = false, onFocus, 
         inputMode="numeric"
         autoComplete="tel"
         spellCheck={false}
-        aria-label="Telefon numarası, +90 5 sabit"
+        aria-label="Telefon numarası, +90 sabit"
       />
     </div>
   )

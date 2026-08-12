@@ -17,7 +17,7 @@ export default function VipCustomerAdd() {
   const handleSave = useCallback(() => {
     setFormError('')
     if (!isCompleteVipPhone(digits)) {
-      setFormError('5’ten sonraki haneleri eksiksiz giriniz.')
+      setFormError('Telefon numarasını +90 (5__) ___ __ __ veya +90 (2__) ___ __ __ formatında eksiksiz giriniz.')
       return
     }
 

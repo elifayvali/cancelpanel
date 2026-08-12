@@ -5,6 +5,7 @@ import DefineRestaurant from './DefineRestaurant'
 import PlatformPriceComparison from './PlatformPriceComparison'
 import VipCustomerAdd from './VipCustomerAdd'
 import VipCustomerUpdate from './VipCustomerUpdate'
+import CarryingBag from './CarryingBag'
 import './App.css'
 
 class RestaurantChannelErrorBoundary extends Component {
@@ -157,6 +158,15 @@ function MenuIcon({ name }) {
         <circle cx="12" cy="8" r="3.2" />
         <path d="M5.5 19.5c1.8-3 4.1-4.5 6.5-4.5s4.7 1.5 6.5 4.5" />
         <path d="M17 4.5l.8 1.6 1.8.3-1.3 1.2.3 1.8L17 8.5l-1.6.9.3-1.8-1.3-1.2 1.8-.3z" />
+      </svg>
+    )
+  }
+
+  if (name === 'carrying-bag') {
+    return (
+      <svg {...common}>
+        <path d="M7 8h10l1 12H6z" />
+        <path d="M9 8V6.5A3 3 0 0 1 12 3.5 3 3 0 0 1 15 6.5V8" />
       </svg>
     )
   }
@@ -401,6 +411,16 @@ function App() {
               Vip Müşteri Güncelle
             </button>
           </div>
+
+          <button
+            type="button"
+            className={`menu-item ${activeMenu === 'carrying-bag' ? 'active' : ''}`}
+            onClick={() => setActiveMenu('carrying-bag')}
+            aria-label="Taşıma Çantası"
+          >
+            <span className="menu-icon"><MenuIcon name="carrying-bag" /></span>
+            <span className="menu-label">Taşıma Çantası</span>
+          </button>
         </nav>
         <div className="sidebar-footer" />
       </aside>
@@ -425,7 +445,8 @@ function App() {
             activeMenu === 'price-compare-define-restaurant' ||
             activeMenu === 'price-compare-platform' ||
             activeMenu === 'vip-customer-add' ||
-            activeMenu === 'vip-customer-update'
+            activeMenu === 'vip-customer-update' ||
+            activeMenu === 'carrying-bag'
               ? 'content-panel'
               : 'blank-panel'
           }
@@ -444,6 +465,7 @@ function App() {
           ) : null}
           {activeMenu === 'vip-customer-add' ? <VipCustomerAdd /> : null}
           {activeMenu === 'vip-customer-update' ? <VipCustomerUpdate /> : null}
+          {activeMenu === 'carrying-bag' ? <CarryingBag /> : null}
         </section>
       </main>
     </div>

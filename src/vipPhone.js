@@ -2,74 +2,64 @@
 
 export const VIP_PHONE_STORAGE_KEY = 'vip-customer-phones'
 
-/** Sabit önek — kullanıcı yalnızca 5'ten sonraki haneleri girer */
-export const VIP_PHONE_FIXED_PREFIX = '+90 (5'
+/** Sabit önek — kullanıcı parantez içinden itibaren girer */
+export const VIP_PHONE_FIXED_PREFIX = '+90 ('
 
-export const VIP_PHONE_REST_PLACEHOLDER = '__) ___ __ __'
+export const VIP_PHONE_REST_PLACEHOLDER = '___) ___ __ __'
 
-/** 5'ten sonraki en fazla 9 rakam */
-export function normalizeVipRestDigits(raw) {
+/** İlk hane yalnızca 5 veya 2 olabilir */
+const VIP_FIRST_DIGITS = new Set(['2', '5'])
+
+/** En fazla 10 ulusal hane (+90 sonrası); ilk hane 2 veya 5 */
+export function normalizeVipDigits(raw) {
   let digits = String(raw ?? '').replace(/\D/g, '')
-
-  if (digits.startsWith('90') && digits.length >= 3) {
+  if (digits.startsWith('90') && digits.length > 10) {
     digits = digits.slice(2)
   }
-  if (digits.startsWith('5')) {
+  digits = digits.slice(0, 10)
+
+  if (!digits.length) return ''
+  while (digits.length && !VIP_FIRST_DIGITS.has(digits[0])) {
     digits = digits.slice(1)
   }
 
-  return digits.slice(0, 9)
+  return digits.slice(0, 10)
 }
 
-export function toFullVipDigits(restDigits) {
-  const rest = normalizeVipRestDigits(restDigits)
-  return rest.length ? `5${rest}` : ''
-}
-
-export function restDigitsFromFull(fullDigitsOrRaw) {
-  let digits = String(fullDigitsOrRaw ?? '').replace(/\D/g, '')
-  if (digits.startsWith('90') && digits.length > 10) digits = digits.slice(2)
-  if (digits.startsWith('5')) return digits.slice(1, 10)
-  return digits.slice(0, 9)
-}
-
-/** 5'ten sonraki kısım: XX) XXX XX XX */
-export function formatVipRest(restDigitsOrRaw) {
-  const d = normalizeVipRestDigits(restDigitsOrRaw)
+/**
+ * Kullanıcı girişi kısmı: XXX) XXX XX XX
+ */
+export function formatVipRest(digitsOrRaw) {
+  const d = normalizeVipDigits(digitsOrRaw)
   if (!d.length) return ''
 
-  let out = d.slice(0, Math.min(2, d.length))
-  if (d.length < 2) return out
+  let out = d.slice(0, Math.min(3, d.length))
+  if (d.length < 3) return out
 
   out += ')'
-  if (d.length === 2) return out
+  if (d.length === 3) return out
 
-  out += ` ${d.slice(2, Math.min(5, d.length))}`
-  if (d.length <= 5) return out
+  out += ` ${d.slice(3, Math.min(6, d.length))}`
+  if (d.length <= 6) return out
 
-  out += ` ${d.slice(5, Math.min(7, d.length))}`
-  if (d.length <= 7) return out
+  out += ` ${d.slice(6, Math.min(8, d.length))}`
+  if (d.length <= 8) return out
 
-  out += ` ${d.slice(7, 9)}`
+  out += ` ${d.slice(8, 10)}`
   return out
 }
 
-/** Tam görünen numara: +90 (5XX) XXX XX XX */
+/** Tam görünen numara: +90 (XXX) XXX XX XX */
 export function formatVipPhone(digitsOrRaw) {
-  const rest = restDigitsFromFull(digitsOrRaw)
-  const formattedRest = formatVipRest(rest)
+  const d = normalizeVipDigits(digitsOrRaw)
+  const formattedRest = formatVipRest(d)
   if (!formattedRest) return VIP_PHONE_FIXED_PREFIX
   return `${VIP_PHONE_FIXED_PREFIX}${formattedRest}`
 }
 
-export function normalizeVipDigits(raw) {
-  const rest = normalizeVipRestDigits(raw)
-  return rest.length ? toFullVipDigits(rest) : ''
-}
-
 export function isCompleteVipPhone(digitsOrRaw) {
   const digits = normalizeVipDigits(digitsOrRaw)
-  return digits.length === 10 && digits.startsWith('5')
+  return digits.length === 10 && VIP_FIRST_DIGITS.has(digits[0])
 }
 
 export function loadVipPhones() {
