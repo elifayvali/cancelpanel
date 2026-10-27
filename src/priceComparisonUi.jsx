@@ -3,7 +3,16 @@ import { ChevronDown } from 'lucide-react'
 
 export const BRANDS = ['Burger King', 'Popeyes', "Arby's"]
 
-export function PriceSelect({ id, label, value, onChange, options, placeholder = 'Seçiniz', hideLabel = false }) {
+export function PriceSelect({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+  placeholder = 'Seçiniz',
+  hideLabel = false,
+  disabled = false,
+}) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
 
@@ -32,7 +41,8 @@ export function PriceSelect({ id, label, value, onChange, options, placeholder =
           className="pc-dd__trigger"
           aria-haspopup="listbox"
           aria-expanded={open}
-          onClick={() => setOpen((p) => !p)}
+          disabled={disabled}
+          onClick={() => !disabled && setOpen((p) => !p)}
         >
           <span className={`pc-dd__triggerText ${!selected ? 'pc-dd__triggerText--placeholder' : ''}`}>
             {selected ? selected.label : placeholder}

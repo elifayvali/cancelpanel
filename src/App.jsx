@@ -3,6 +3,7 @@ import RestaurantChannelStatus from './RestaurantChannelStatus'
 import ChannelOrderErrors from './ChannelOrderErrors'
 import DefineRestaurant from './DefineRestaurant'
 import PlatformPriceComparison from './PlatformPriceComparison'
+import ChannelPriceComparison from './ChannelPriceComparison'
 import VipCustomerAdd from './VipCustomerAdd'
 import VipCustomerUpdate from './VipCustomerUpdate'
 import CarryingBag from './CarryingBag'
@@ -200,7 +201,7 @@ function MenuIcon({ name }) {
 }
 
 function App() {
-  const [activeMenu, setActiveMenu] = useState('search')
+  const [activeMenu, setActiveMenu] = useState('price-compare-channel-band')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   const isErrorGroupActive =
@@ -212,7 +213,8 @@ function App() {
   const isPriceCompareGroupActive =
     activeMenu === 'price-compare' ||
     activeMenu === 'price-compare-define-restaurant' ||
-    activeMenu === 'price-compare-platform'
+    activeMenu === 'price-compare-platform' ||
+    activeMenu === 'price-compare-channel-band'
 
   const isVipCustomerGroupActive =
     activeMenu === 'vip-customer' ||
@@ -383,6 +385,13 @@ function App() {
             >
               Platform Fiyat Karşılaştırma
             </button>
+            <button
+              type="button"
+              className={`sub-menu-item ${activeMenu === 'price-compare-channel-band' ? 'active' : ''}`}
+              onClick={() => setActiveMenu('price-compare-channel-band')}
+            >
+              Kanal Fiyat Karşılaştırma
+            </button>
           </div>
 
           <div className="menu-group">
@@ -444,6 +453,7 @@ function App() {
             activeMenu === 'channel-order-errors' ||
             activeMenu === 'price-compare-define-restaurant' ||
             activeMenu === 'price-compare-platform' ||
+            activeMenu === 'price-compare-channel-band' ||
             activeMenu === 'vip-customer-add' ||
             activeMenu === 'vip-customer-update' ||
             activeMenu === 'carrying-bag'
@@ -461,6 +471,11 @@ function App() {
           {activeMenu === 'price-compare-platform' ? (
             <RestaurantChannelErrorBoundary title="Platform Fiyat Karşılaştırma yüklenemedi">
               <PlatformPriceComparison />
+            </RestaurantChannelErrorBoundary>
+          ) : null}
+          {activeMenu === 'price-compare-channel-band' ? (
+            <RestaurantChannelErrorBoundary title="Kanal Fiyat Karşılaştırma yüklenemedi">
+              <ChannelPriceComparison isActive={activeMenu === 'price-compare-channel-band'} />
             </RestaurantChannelErrorBoundary>
           ) : null}
           {activeMenu === 'vip-customer-add' ? <VipCustomerAdd /> : null}
