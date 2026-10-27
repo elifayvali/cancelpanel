@@ -639,30 +639,30 @@ export default function ChannelPriceComparison() {
               <h2>Restoranlar ({STORES.length})</h2>
               <span>Restoran adına tıklayın; tekrar tıklayınca detay kapanır</span>
             </div>
-            <div className="fk-tools fk-tools--band">
-              <div className="fk-tools__searches">
-                <input
-                  type="search"
-                  value={search}
-                  placeholder="Restoran adı veya Trendyol store ID ara"
-                  aria-label="Restoran ara"
-                  onChange={(event) => {
-                    setSearch(event.target.value)
-                    setPage(1)
-                  }}
-                />
-                <input
-                  type="search"
-                  value={productSearch}
-                  placeholder="Ürün adı ara"
-                  aria-label="Ürün adı ara"
-                  onChange={(event) => {
-                    setProductSearch(event.target.value)
-                    setPage(1)
-                    setDetailPage({ menu: 1, single: 1 })
-                  }}
-                />
-              </div>
+            <div className="fk-tools fk-tools--band" role="toolbar" aria-label="Restoran ve ürün filtreleri">
+              <input
+                type="search"
+                className="fk-tools__search"
+                value={search}
+                placeholder="Restoran adı veya Trendyol store ID ara"
+                aria-label="Restoran ara"
+                onChange={(event) => {
+                  setSearch(event.target.value)
+                  setPage(1)
+                }}
+              />
+              <input
+                type="search"
+                className="fk-tools__search"
+                value={productSearch}
+                placeholder="Ürün adı ara"
+                aria-label="Ürün adı ara"
+                onChange={(event) => {
+                  setProductSearch(event.target.value)
+                  setPage(1)
+                  setDetailPage({ menu: 1, single: 1 })
+                }}
+              />
               <div className="fk-chips fk-chips--band" role="group" aria-label="Durum filtresi">
                 {FILTERS.map(([key, label]) => (
                   <button
