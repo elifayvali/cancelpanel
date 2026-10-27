@@ -428,6 +428,11 @@
   background: var(--fk-primary-soft);
 }
 
+.fk tr.fk-selected td {
+  background: var(--fk-primary-soft);
+  box-shadow: inset 3px 0 0 var(--fk-primary);
+}
+
 .fk-diff td.fk-delta {
   color: var(--fk-warn);
   font-weight: 600;
@@ -437,6 +442,7 @@
   display: inline-block;
   width: 14px;
   color: var(--fk-faint);
+  transition: transform 0.15s ease;
 }
 
 .fk-open > td .fk-caret,
@@ -613,6 +619,137 @@
   border-top: 1px solid var(--fk-line);
 }
 
+.fk-btn--sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.fk-exportFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.fk-stats--kpi {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-bottom: 4px;
+  background: var(--fk-bg);
+}
+
+.fk-restName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--fk-primary-ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.fk-restName:hover {
+  text-decoration: underline;
+}
+
+.fk-restName--open .fk-caret {
+  transform: rotate(90deg);
+}
+
+.fk-detailRow > td {
+  padding: 0 !important;
+  background: var(--fk-surface-2);
+  border-bottom: 2px solid var(--fk-line);
+}
+
+.fk-detailInner {
+  padding: 16px 18px 20px;
+}
+
+.fk-panelhead--inline {
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.fk tr.fk-selected > td {
+  background: var(--fk-primary-soft);
+}
+
+.fk-tools--pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.fk-tools--band {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px 14px;
+}
+
+.fk-tools__searches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.fk-chips--band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.fk-tools--band .fk-tools__searches input {
+  max-width: none;
+  width: 100%;
+}
+
+.fk-tools__field {
+  position: relative;
+}
+
+.fk-restpick {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--fk-surface);
+  border: 1px solid var(--fk-line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(31 38 56 / 8%);
+  max-height: 220px;
+  overflow: auto;
+}
+
+.fk-restpick button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fk-restpick button:hover {
+  background: var(--fk-primary-soft);
+}
+
 @media (max-width: 1000px) {
   .fk-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -626,5 +763,10 @@
 
   .fk-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fk-tools--pair,
+  .fk-tools__searches {
+    grid-template-columns: 1fr;
   }
 }

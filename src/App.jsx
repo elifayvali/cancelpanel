@@ -1,12 +1,7 @@
 import { Component, useState } from 'react'
 import RestaurantChannelStatus from './RestaurantChannelStatus'
 import ChannelOrderErrors from './ChannelOrderErrors'
-import DefineRestaurant from './DefineRestaurant'
-import PlatformPriceComparison from './PlatformPriceComparison'
 import ChannelPriceComparison from './ChannelPriceComparison'
-import VipCustomerAdd from './VipCustomerAdd'
-import VipCustomerUpdate from './VipCustomerUpdate'
-import CarryingBag from './CarryingBag'
 import './App.css'
 
 class RestaurantChannelErrorBoundary extends Component {
@@ -210,17 +205,6 @@ function App() {
     activeMenu === 'errors-channel' ||
     activeMenu === 'errors-order'
 
-  const isPriceCompareGroupActive =
-    activeMenu === 'price-compare' ||
-    activeMenu === 'price-compare-define-restaurant' ||
-    activeMenu === 'price-compare-platform' ||
-    activeMenu === 'price-compare-channel-band'
-
-  const isVipCustomerGroupActive =
-    activeMenu === 'vip-customer' ||
-    activeMenu === 'vip-customer-add' ||
-    activeMenu === 'vip-customer-update'
-
   return (
     <div className="page">
       <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
@@ -360,75 +344,14 @@ function App() {
             <span className="menu-label">Kanal Sipariş Hataları</span>
           </button>
 
-          <div className="menu-group">
-            <button
-              type="button"
-              className={`menu-item group-open ${isPriceCompareGroupActive ? 'active' : ''}`}
-              onClick={() => setActiveMenu('price-compare-define-restaurant')}
-              aria-label="Fiyat Karşılaştırma"
-            >
-              <span className="menu-icon"><MenuIcon name="price-compare" /></span>
-              <span className="menu-label">Fiyat Karşılaştırma</span>
-              <span className="chevron"><MenuIcon name="chevron" /></span>
-            </button>
-            <button
-              type="button"
-              className={`sub-menu-item ${activeMenu === 'price-compare-define-restaurant' ? 'active' : ''}`}
-              onClick={() => setActiveMenu('price-compare-define-restaurant')}
-            >
-              Restoran Tanımla
-            </button>
-            <button
-              type="button"
-              className={`sub-menu-item ${activeMenu === 'price-compare-platform' ? 'active' : ''}`}
-              onClick={() => setActiveMenu('price-compare-platform')}
-            >
-              Platform Fiyat Karşılaştırma
-            </button>
-            <button
-              type="button"
-              className={`sub-menu-item ${activeMenu === 'price-compare-channel-band' ? 'active' : ''}`}
-              onClick={() => setActiveMenu('price-compare-channel-band')}
-            >
-              Kanal Fiyat Karşılaştırma
-            </button>
-          </div>
-
-          <div className="menu-group">
-            <button
-              type="button"
-              className={`menu-item group-open ${isVipCustomerGroupActive ? 'active' : ''}`}
-              onClick={() => setActiveMenu('vip-customer-add')}
-              aria-label="Vip Müşteri Yönetimi"
-            >
-              <span className="menu-icon"><MenuIcon name="vip-customer" /></span>
-              <span className="menu-label">Vip Müşteri Yönetimi</span>
-              <span className="chevron"><MenuIcon name="chevron" /></span>
-            </button>
-            <button
-              type="button"
-              className={`sub-menu-item ${activeMenu === 'vip-customer-add' ? 'active' : ''}`}
-              onClick={() => setActiveMenu('vip-customer-add')}
-            >
-              Yeni Vip Müşteri Ekle
-            </button>
-            <button
-              type="button"
-              className={`sub-menu-item ${activeMenu === 'vip-customer-update' ? 'active' : ''}`}
-              onClick={() => setActiveMenu('vip-customer-update')}
-            >
-              Vip Müşteri Güncelle
-            </button>
-          </div>
-
           <button
             type="button"
-            className={`menu-item ${activeMenu === 'carrying-bag' ? 'active' : ''}`}
-            onClick={() => setActiveMenu('carrying-bag')}
-            aria-label="Taşıma Çantası"
+            className={`menu-item ${activeMenu === 'price-compare-channel-band' ? 'active' : ''}`}
+            onClick={() => setActiveMenu('price-compare-channel-band')}
+            aria-label="Kanal Fiyat Karşılaştırma"
           >
-            <span className="menu-icon"><MenuIcon name="carrying-bag" /></span>
-            <span className="menu-label">Taşıma Çantası</span>
+            <span className="menu-icon"><MenuIcon name="price-compare" /></span>
+            <span className="menu-label">Kanal Fiyat Karşılaştırma</span>
           </button>
         </nav>
         <div className="sidebar-footer" />
@@ -451,12 +374,7 @@ function App() {
           className={
             activeMenu === 'restaurant-channel' ||
             activeMenu === 'channel-order-errors' ||
-            activeMenu === 'price-compare-define-restaurant' ||
-            activeMenu === 'price-compare-platform' ||
-            activeMenu === 'price-compare-channel-band' ||
-            activeMenu === 'vip-customer-add' ||
-            activeMenu === 'vip-customer-update' ||
-            activeMenu === 'carrying-bag'
+            activeMenu === 'price-compare-channel-band'
               ? 'content-panel'
               : 'blank-panel'
           }
@@ -467,20 +385,11 @@ function App() {
             </RestaurantChannelErrorBoundary>
           ) : null}
           {activeMenu === 'channel-order-errors' ? <ChannelOrderErrors /> : null}
-          {activeMenu === 'price-compare-define-restaurant' ? <DefineRestaurant /> : null}
-          {activeMenu === 'price-compare-platform' ? (
-            <RestaurantChannelErrorBoundary title="Platform Fiyat Karşılaştırma yüklenemedi">
-              <PlatformPriceComparison />
-            </RestaurantChannelErrorBoundary>
-          ) : null}
           {activeMenu === 'price-compare-channel-band' ? (
             <RestaurantChannelErrorBoundary title="Kanal Fiyat Karşılaştırma yüklenemedi">
               <ChannelPriceComparison isActive={activeMenu === 'price-compare-channel-band'} />
             </RestaurantChannelErrorBoundary>
           ) : null}
-          {activeMenu === 'vip-customer-add' ? <VipCustomerAdd /> : null}
-          {activeMenu === 'vip-customer-update' ? <VipCustomerUpdate /> : null}
-          {activeMenu === 'carrying-bag' ? <CarryingBag /> : null}
         </section>
       </main>
     </div>
