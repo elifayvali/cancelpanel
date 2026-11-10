@@ -118,6 +118,13 @@ function template(variant) {
         opts: [O("Soğan Halkası (8'li)", '280669', '5014', 45, null), O("Soğan Halkası (6'lı)", '280664', '5013', 40, null)],
       },
       {
+        name: 'Promosyon Baharat',
+        ty: '35990',
+        sub: null,
+        noMongo: true,
+        opts: [O('Barbekü Baharatı', '4999101', null, 5, null), O('Acılı Baharat', '4999102', null, 5, null)],
+      },
+      {
         name: 'Promosyon Tatlı',
         ty: '35262',
         sub: '999940',
@@ -148,7 +155,7 @@ function template(variant) {
         sub: '999923',
         opts: [
           O('Coca-Cola (1 L.)', '282297', '3049', 65, 65),
-          O('Fanta (1 L.)', '282291', '3051', null, 65, 'pasif'),
+          O('Fanta (1 L.)', '282291', '3051', 70, 65, 'pasif'),
           O('Ayran (1 L.)', '4999001', null, 40, null, 'ccsyok'),
         ],
       },
@@ -179,7 +186,7 @@ function template(variant) {
     ty: '15335943',
     plu: '299088',
     ccsName: 'TAVUK LOKUM DURUM MENU',
-    k: null,
+    k: 315,
     c: 305,
     st: 'pasif',
     groups: [
@@ -236,7 +243,7 @@ function template(variant) {
       ty: '282400',
       plu: '3049',
       ccsName: 'COCA COLA 1 LT',
-      k: null,
+      k: 75,
       c: 75,
       st: 'pasif',
     },
@@ -264,21 +271,20 @@ function template(variant) {
     },
     {
       type: 'single',
-      name: null,
+      name: "Soğan Halkası (10'lu)",
       ty: '280671',
       plu: '5016',
       ccsName: 'SOGAN HALKASI 10LU',
-      k: null,
+      k: 105,
       c: 110,
-      st: 'kanaldayok',
-      why: 'Kanalda sadece opsiyon olarak satılıyor',
+      why: "Trendyol'da sadece opsiyon olarak satılıyor; Mongo'da tekli ürün (F-P29)",
     },
   ]
 
   let all = [dort, tombik, durum, lokum, ...singles]
   if (variant === 'clean') {
     all.forEach((product) => {
-      if (product.groups) product.groups = product.groups.filter((group) => !group.chMissing)
+      if (product.groups) product.groups = product.groups.filter((group) => !group.chMissing && !group.noMongo)
     })
   }
   if (variant === 'clean' || variant === 'missing') {
@@ -314,22 +320,75 @@ function template(variant) {
 }
 
 const STORE_SEED = [
-  { name: 'UD Kadıköy Moda', store: '281001', g: '40571', v: 'full' },
-  { name: 'UD Kadıköy Moda', store: '281002', g: '40571', v: 'clean', second: true },
-  { name: 'UD Ataşehir Brandium', store: '281010', g: '40588', v: 'clean' },
-  { name: 'UD Bakırköy Carousel', store: '281020', g: '40602', v: 'missing' },
-  { name: 'UD Maltepe Piazza', store: '281030', g: '40615', v: 'full' },
-  { name: 'UD Beşiktaş Çarşı', store: '281040', g: '40630', v: 'clean' },
-  { name: 'UD Üsküdar Meydan', store: '281045', g: '40644', v: 'missing' },
+  { name: 'UD Kadıköy Moda', store: '281001', g: '40571', pg: '1001', pb: '1004', v: 'full' },
+  { name: 'UD Kadıköy Moda', store: '281002', g: '40571', pg: '1001', pb: '1004', v: 'clean', second: true },
+  { name: 'UD Ataşehir Brandium', store: '281010', g: '40588', pg: '1001', pb: '1004', v: 'clean' },
+  { name: 'UD Bakırköy Carousel', store: '281020', g: '40602', pg: '1001', pb: '1000', v: 'missing' },
+  { name: 'UD Maltepe Piazza', store: '281030', g: '40615', pg: '1001', pb: '1000', v: 'full' },
+  { name: 'UD Beşiktaş Çarşı', store: '281040', g: '40630', pg: '1001', pb: '1004', v: 'clean' },
+  { name: 'UD Üsküdar Meydan', store: '281045', g: '40644', pg: '1001', pb: '1000', v: 'missing' },
 ]
 
-export const STORES = STORE_SEED.map((row, index) => ({
+export const ALL_STORES = STORE_SEED.map((row, index) => ({
   ...row,
   id: `r${index}`,
   items: template(row.v),
 }))
 
-export const FAILED = [{ name: 'UD Pendik', store: '281050', reason: 'Trendyol 504' }]
+export const ALL_FAILED = [
+  { name: 'UD Pendik', store: '281050', g: '40650', pg: '1001', pb: '1004', reason: 'Trendyol 504' },
+  { name: 'UD Bağdat Caddesi', store: '281060', g: '40655', pg: '1001', pb: '1000', reason: 'Kanal menüsü boş döndü' },
+]
+
+/** @deprecated mock uyumluluğu — aktif kapsam bileşende tutulur */
+export const STORES = ALL_STORES
+export const FAILED = ALL_FAILED
+
+export function filterScope(groupId, bandId) {
+  const inScope = (row) => (!groupId || row.pg === groupId) && (!bandId || row.pb === bandId)
+  return {
+    stores: ALL_STORES.filter(inScope),
+    failed: ALL_FAILED.filter(inScope),
+  }
+}
+
+export function resolveGroupName(groupId) {
+  if (!groupId) return 'Tüm ürün grupları'
+  return GROUPS.find((group) => group.id === groupId)?.name ?? groupId
+}
+
+export function resolveBandName(groupId, bandId) {
+  if (!bandId) return 'Tüm bantlar'
+  return BANDS[groupId]?.find((band) => band.id === bandId)?.name ?? bandId
+}
+
+export function bandSummaries(stores, failed) {
+  const map = new Map()
+  stores.forEach((store) => {
+    const key = `${store.pg}|${store.pb}`
+    if (!map.has(key)) map.set(key, { key, pg: store.pg, pb: store.pb, stores: [], failed: 0 })
+    map.get(key).stores.push(store)
+  })
+  failed.forEach((row) => {
+    const key = `${row.pg}|${row.pb}`
+    if (map.has(key)) map.get(key).failed += 1
+  })
+  return [...map.values()]
+    .map((band) => {
+      const statuses = band.stores.map(storeStatus)
+      return {
+        ...band,
+        n: band.stores.length,
+        diffCount: statuses.filter((status) => status === 'diff').length,
+        missingCount: statuses.filter((status) => status === 'missing').length,
+      }
+    })
+    .sort(
+      (a, b) =>
+        a.pg.localeCompare(b.pg) ||
+        resolveBandName(a.pg, a.pb).localeCompare(resolveBandName(b.pg, b.pb), 'tr'),
+    )
+}
 
 export const FILTERS = [
   ['all', 'Tümü'],
@@ -356,10 +415,23 @@ export const STORE_STATUS_LABEL = {
 
 const STORE_ORDER = { diff: 0, missing: 1, ok: 2 }
 
+export function isPasif(item) {
+  return item.st === 'pasif'
+}
+
 export function itemStatus(item) {
-  if (item.st) return item.st
+  if (item.st && !isPasif(item)) return item.st
   if (item.c === null) return 'nogroup'
   return item.k === item.c ? 'ok' : 'diff'
+}
+
+const OPTION_WHY = {
+  kanaldayok: 'Kanalda yok',
+  ccsyok: "Mongo'da Trendyol eşleşmesi yok",
+}
+
+export function optionWhyText(status) {
+  return OPTION_WHY[status] ?? ''
 }
 
 export function isMissingStatus(status) {
@@ -372,6 +444,7 @@ export function expandable(product) {
 
 export function optionStatus(group, option) {
   if (group.chMissing) return 'kanaldayok'
+  if (group.noMongo) return 'ccsyok'
   if (!group.sub) return 'nogroup'
   return itemStatus(option)
 }
@@ -388,6 +461,7 @@ export function modifierLines(group, option) {
       out.push({
         key: `${option.ty}|${modGroup.ty}|${mod.ty}`,
         status: optionStatus(modGroup, mod),
+        pasif: isPasif(mod),
       })
     })
   })
@@ -406,17 +480,17 @@ function optionStatuses(product) {
 export function countItems(items) {
   const counts = { diff: 0, missing: 0, pasif: 0, ok: 0, nogroup: 0 }
   const seen = new Set()
-  const add = (status) => {
+  const add = (status, pasifRow) => {
+    if (pasifRow) counts.pasif += 1
     if (status === 'diff') counts.diff += 1
     else if (isMissingStatus(status)) {
       counts.missing += 1
       if (status === 'nogroup') counts.nogroup += 1
-    } else if (status === 'pasif') counts.pasif += 1
-    else counts.ok += 1
+    } else counts.ok += 1
   }
 
   items.forEach((product) => {
-    add(itemStatus(product))
+    add(itemStatus(product), isPasif(product))
     if (!expandable(product)) return
     product.groups.forEach((group) => {
       group.opts.forEach((option) => {
@@ -426,11 +500,11 @@ export function countItems(items) {
           if (seen.has(key)) return
           seen.add(key)
         }
-        add(status)
+        add(status, isPasif(option))
         modifierLines(group, option).forEach((line) => {
           if (seen.has(line.key)) return
           seen.add(line.key)
-          add(line.status)
+          add(line.status, line.pasif)
         })
       })
     })
@@ -529,7 +603,11 @@ export function formatMoney(value) {
 
 export function formatDelta(item) {
   if (itemStatus(item) !== 'diff') return '–'
-  return formatMoney(Math.abs(item.k - item.c))
+  if (item.k == null || item.c == null) return '–'
+  return Number(Math.abs(item.k - item.c)).toLocaleString('tr-TR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 }
 
 export function productKey(product) {
@@ -538,10 +616,18 @@ export function productKey(product) {
 
 export function compareStores(list, sort) {
   const next = [...list]
+  const textKey = (row, key) => {
+    if (key === 'name') return row.store.name
+    if (key === 'pg') return resolveGroupName(row.store.pg)
+    if (key === 'pb') return resolveBandName(row.store.pg, row.store.pb)
+    return ''
+  }
   if (sort.key) {
     const dir = sort.dir
     next.sort((a, b) => {
-      if (sort.key === 'name') return dir * a.store.name.localeCompare(b.store.name, 'tr')
+      if (sort.key === 'name' || sort.key === 'pg' || sort.key === 'pb') {
+        return dir * textKey(a, sort.key).localeCompare(textKey(b, sort.key), 'tr')
+      }
       if (sort.key === 'diff') return dir * (a.counts.diff - b.counts.diff)
       return dir * (a.counts.missing - b.counts.missing)
     })

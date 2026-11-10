@@ -348,10 +348,10 @@ function App() {
             type="button"
             className={`menu-item ${activeMenu === 'price-compare-channel-band' ? 'active' : ''}`}
             onClick={() => setActiveMenu('price-compare-channel-band')}
-            aria-label="Kanal Fiyat Karşılaştırma"
+            aria-label="Fiyat karşılaştırma"
           >
             <span className="menu-icon"><MenuIcon name="price-compare" /></span>
-            <span className="menu-label">Kanal Fiyat Karşılaştırma</span>
+            <span className="menu-label">Fiyat karşılaştırma</span>
           </button>
         </nav>
         <div className="sidebar-footer" />

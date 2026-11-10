@@ -1,5 +1,7 @@
 import * as XLSX from 'xlsx'
-import { FAILED, itemStatus, optionCanOpen, optionStatus } from './catalog'
+import { itemStatus, optionCanOpen, optionStatus, resolveBandName, resolveGroupName } from './catalog'
+
+const BRAND_SLUG = { 1: 'BK', 2: 'UP', 3: 'BKC', 4: 'UD', 5: 'PE', 6: 'AR', 7: 'SB', 10: 'SW' }
 
 function statusLabelTr(status) {
   switch (status) {
@@ -132,7 +134,7 @@ function fileStamp() {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`
 }
 
-export function exportChannelPriceComparisonExcel({ stores, brandName, groupName, bandName, comparedAt }) {
+export function exportChannelPriceComparisonExcel({ stores, ccsId, groupId, bandId, comparedAt }) {
   const productRows = []
   const optionRows = []
 
@@ -148,10 +150,20 @@ export function exportChannelPriceComparisonExcel({ stores, brandName, groupName
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(optionRows), 'Opsiyonlar')
 
   const stamp = comparedAt
-    ? comparedAt.replaceAll('.', '').replace(' ', '-').replace(':', '').slice(0, 13)
+    ? comparedAt
+        .replaceAll('.', '')
+        .replaceAll(' ', '-')
+        .replace(':', '')
+        .replace(/[^\d-]/g, '')
+        .slice(0, 13)
     : fileStamp()
-  const fname = `fiyat-karsilastirma_${slugPart(brandName)}_${slugPart(groupName)}_${slugPart(bandName)}_${stamp}.xlsx`
+  const slug = (value) =>
+    String(value ?? '')
+      .toLocaleUpperCase('tr')
+      .replace(/\s+/g, '-')
+  const parts = [BRAND_SLUG[ccsId] || slug(ccsId)]
+  if (groupId) parts.push(slug(resolveGroupName(groupId)))
+  parts.push(bandId ? slug(resolveBandName(groupId, bandId)) : 'TUM-BANTLAR')
+  const fname = `fiyat-karsilastirma_${parts.join('_')}_${stamp}.xlsx`
   XLSX.writeFile(wb, fname)
 }
-
-export { FAILED }

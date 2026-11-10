@@ -2,24 +2,28 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   BANDS,
   BRANDS,
-  FAILED,
   FILTERS,
   GROUPS,
   STATUS_LABEL,
-  STORES,
+  STORE_STATUS_LABEL,
+  bandSummaries,
   compareStores,
   countItems,
   expandable,
+  filterScope,
   formatDelta,
   formatMoney,
   itemStatus,
   optionCanOpen,
   optionStatus,
   optionTags,
+  optionWhyText,
   productKey,
   productMatches,
   productOwnsFilter,
   productRank,
+  resolveBandName,
+  resolveGroupName,
   rowTags,
   storeStatus,
   visibleGroups,
@@ -29,22 +33,18 @@ import { exportChannelPriceComparisonExcel } from './channelPriceComparison/chan
 import './ChannelPriceComparison.css'
 
 const PAGE_SIZES = [50, 75, 100]
-const TOTAL_STORES = STORES.length + FAILED.length
 
 function brandName(ccsId) {
   return BRANDS.find((brand) => String(brand.ccsId) === String(ccsId))?.name ?? ''
 }
 
-function groupName(groupId) {
-  return GROUPS.find((group) => group.id === groupId)?.name ?? ''
-}
-
-function bandName(groupId, priceGroupId) {
-  return BANDS[groupId]?.find((band) => band.id === priceGroupId)?.name ?? ''
-}
-
 function Pill({ status }) {
   const [label, tone] = STATUS_LABEL[status]
+  return <span className={`fk-pill fk-${tone}`}>{label}</span>
+}
+
+function StorePill({ status }) {
+  const [label, tone] = STORE_STATUS_LABEL[status]
   return <span className={`fk-pill fk-${tone}`}>{label}</span>
 }
 
@@ -109,12 +109,14 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
   return groups.map((group) => {
     const groupPill = group.chMissing ? (
       <span className="fk-pill fk-info">Kanalda yok · opsiyon türü</span>
+    ) : group.noMongo ? (
+      <span className="fk-pill fk-bad">Grup Mongo&apos;da tanımlı değil</span>
     ) : group.sub ? (
       <span className="fk-pill fk-ok">Tür eşleşti</span>
     ) : (
       <Pill status="nogroup" />
     )
-    const showPrices = group.sub && !group.chMissing
+    const showPrices = group.sub && !group.chMissing && !group.noMongo
 
     return (
       <Fragment key={`${productKeyValue}-${group.ty}-${group.name}`}>
@@ -134,6 +136,7 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
           const isOpen = canOpen && (filter !== 'all' ? !open.has(optionKey) : open.has(optionKey))
           const context = filter !== 'all' && optionTags(group, option).every((tag) => tag.cat !== filter)
           const mods = isOpen ? (filter !== 'all' ? visibleModifiers(filter, group, option) : option.mods) : []
+          const why = optionWhyText(status)
 
           return (
             <Fragment key={optionKey}>
@@ -161,10 +164,11 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
                 <td className="fk-mono">{option.plu || '–'}</td>
                 <td />
                 <td className="fk-num">{group.chMissing ? '–' : formatMoney(option.k)}</td>
-                <td className="fk-num">{showPrices || group.chMissing ? formatMoney(option.c) : '–'}</td>
+                <td className="fk-num">{showPrices || group.chMissing || group.noMongo ? formatMoney(option.c) : '–'}</td>
                 <td className="fk-num fk-delta">{showPrices ? formatDelta(option) : '–'}</td>
                 <td>
                   <TagList tags={optionTags(group, option)} />
+                  {why ? <div className="fk-ctxnote fk-why">{why}</div> : null}
                 </td>
               </tr>
               {mods.map((modGroup) => (
@@ -192,6 +196,7 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
                         <td className="fk-num fk-delta">{formatDelta(mod)}</td>
                         <td>
                           <Pill status={modStatus} />
+                          {optionWhyText(modStatus) ? <div className="fk-ctxnote fk-why">{optionWhyText(modStatus)}</div> : null}
                         </td>
                       </tr>
                     )
@@ -306,12 +311,19 @@ function ProductTable({ title, hint, rows, pageKey, page, size, filter, open, on
   )
 }
 
+const initialScope = filterScope('', '')
+
 export default function ChannelPriceComparison() {
   const [ccsId, setCcsId] = useState('4')
-  const [groupId, setGroupId] = useState('1001')
-  const [priceGroupId, setPriceGroupId] = useState('1004')
-  const [view, setView] = useState('none')
+  const [groupId, setGroupId] = useState('')
+  const [priceGroupId, setPriceGroupId] = useState('')
+  const [selGroup, setSelGroup] = useState('')
+  const [selBand, setSelBand] = useState('')
+  const [activeStores, setActiveStores] = useState(initialScope.stores)
+  const [activeFailed, setActiveFailed] = useState(initialScope.failed)
+  const [view, setView] = useState('band')
   const [restId, setRestId] = useState(null)
+  const [bandFilter, setBandFilter] = useState(null)
   const [filter, setFilter] = useState('all')
   const [open, setOpen] = useState(() => new Set())
   const [search, setSearch] = useState('')
@@ -320,36 +332,47 @@ export default function ChannelPriceComparison() {
   const [page, setPage] = useState(1)
   const [detailPage, setDetailPage] = useState({ menu: 1, single: 1 })
   const [pageSize, setPageSize] = useState(50)
-  const [comparedAt, setComparedAt] = useState('')
+  const [comparedAt, setComparedAt] = useState(() => {
+    const now = new Date()
+    return `${now.toLocaleDateString('tr-TR')} 09:42`
+  })
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [progressTotal, setProgressTotal] = useState(0)
   const [notice, setNotice] = useState('')
   const [exportMsg, setExportMsg] = useState('')
   const timerRef = useRef(null)
 
   useEffect(() => () => clearTimeout(timerRef.current), [])
 
-  const rest = STORES.find((store) => store.id === restId) ?? null
-  const bands = BANDS[groupId] ?? []
+  const rest = activeStores.find((store) => store.id === restId) ?? null
+  const bandsForGroup = groupId ? BANDS[groupId] ?? [] : []
 
-  const clearRunView = (message = '') => {
+  const resetRunView = (message = '') => {
     setView('none')
     setRestId(null)
+    setBandFilter(null)
     setComparedAt('')
     setNotice(message)
     setExportMsg('')
   }
 
-  const toggleRestaurant = (storeId) => {
-    if (restId === storeId) {
-      setRestId(null)
-      setOpen(new Set())
-      return
-    }
+  const openRestaurant = (storeId) => {
     setRestId(storeId)
+    setView('rest')
     setFilter('all')
     setOpen(new Set())
+    setProductSearch('')
     setDetailPage({ menu: 1, single: 1 })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const backToBand = () => {
+    setView('band')
+    setRestId(null)
+    setFilter('all')
+    setOpen(new Set())
+    setProductSearch('')
   }
 
   const toggleOpen = (key) => {
@@ -375,25 +398,39 @@ export default function ChannelPriceComparison() {
   const startCompare = () => {
     clearTimeout(timerRef.current)
     setNotice('')
-    setView('none')
-    setRestId(null)
     setExportMsg('')
+    setBandFilter(null)
+    setRestId(null)
+    setSelGroup(groupId)
+    setSelBand(priceGroupId)
+
+    const scope = filterScope(groupId, priceGroupId)
+    const total = scope.stores.length + scope.failed.length
+    if (!total) {
+      resetRunView(
+        priceGroupId ? 'Bu fiyat bandına bağlı restoran bulunamadı.' : 'Seçime bağlı restoran bulunamadı.',
+      )
+      return
+    }
+
+    setActiveStores(scope.stores)
+    setActiveFailed(scope.failed)
+    setView('none')
     setRunning(true)
     setProgress(0)
+    setProgressTotal(total)
 
     let step = 0
     const tick = () => {
       setProgress(step)
-      if (step < TOTAL_STORES) {
+      if (step < total) {
         step += 1
         timerRef.current = setTimeout(tick, 450)
         return
       }
       const now = new Date()
-      const date = now.toLocaleDateString('tr-TR')
-      const time = now.toTimeString().slice(0, 5)
       setRunning(false)
-      setComparedAt(`${date} ${time}`)
+      setComparedAt(`${now.toLocaleDateString('tr-TR')} ${now.toTimeString().slice(0, 5)}`)
       setView('band')
       setPage(1)
       setSearch('')
@@ -406,40 +443,29 @@ export default function ChannelPriceComparison() {
   const stopCompare = () => {
     clearTimeout(timerRef.current)
     setRunning(false)
-    clearRunView('Karşılaştırma durduruldu. Sonuç tutulmadı; filtreleri seçip yeniden karşılaştırabilirsiniz.')
+    resetRunView('Karşılaştırma durduruldu. Sonuç tutulmadı; filtreleri seçip yeniden karşılaştırabilirsiniz.')
   }
 
   const storeRows = useMemo(() => {
-    let list = STORES.map((store) => ({
+    let list = activeStores.map((store) => ({
       store,
       status: storeStatus(store),
       counts: countItems(store.items),
     }))
+    if (bandFilter) {
+      list = list.filter((row) => `${row.store.pg}|${row.store.pb}` === bandFilter)
+    }
     const query = search.trim().toLocaleLowerCase('tr')
     if (query) {
       list = list.filter(
-        (row) => row.store.name.toLocaleLowerCase('tr').includes(query) || row.store.store.includes(query),
+        (row) =>
+          row.store.name.toLocaleLowerCase('tr').includes(query) ||
+          row.store.store.includes(query) ||
+          String(row.store.g || '').includes(query),
       )
-    }
-    const productQ = productSearch.trim().toLocaleLowerCase('tr')
-    if (productQ) {
-      list = list.filter((row) =>
-        row.store.items.some((product) =>
-          `${product.name || ''} ${product.ccsName || ''}`.toLocaleLowerCase('tr').includes(productQ),
-        ),
-      )
-    }
-    if (filter !== 'all') {
-      list = list.filter((row) => {
-        if (filter === 'diff') return row.status === 'diff'
-        if (filter === 'missing') return row.status === 'missing'
-        if (filter === 'ok') return row.status === 'ok'
-        if (filter === 'pasif') return row.counts.pasif > 0
-        return true
-      })
     }
     return compareStores(list, sort)
-  }, [search, productSearch, filter, sort])
+  }, [activeStores, bandFilter, search, sort])
 
   const detailRows = useMemo(() => {
     if (!rest) return { menus: [], singles: [], counts: null }
@@ -459,36 +485,41 @@ export default function ChannelPriceComparison() {
     }
   }, [rest, filter, productSearch])
 
-  const bandKpiCounts = useMemo(() => {
-    const totals = { diff: 0, missing: 0, pasif: 0, nogroup: 0 }
-    STORES.forEach((store) => {
-      const c = countItems(store.items)
-      totals.diff += c.diff
-      totals.missing += c.missing
-      totals.pasif += c.pasif
-      totals.nogroup += c.nogroup
-    })
-    return totals
-  }, [])
-
-  const kpiCounts = restId && detailRows.counts ? detailRows.counts : bandKpiCounts
+  const summaries = useMemo(() => bandSummaries(activeStores, activeFailed), [activeStores, activeFailed])
+  const multiBand = summaries.length > 1
+  const diffStores = activeStores.filter((store) => storeStatus(store) === 'diff').length
+  const missStores = activeStores.filter((store) => storeStatus(store) === 'missing').length
+  const okStores = activeStores.filter((store) => storeStatus(store) === 'ok').length
+  const hasDiff = diffStores > 0
+  const partialFailed = activeFailed.length > 0
 
   const bandPages = Math.max(1, Math.ceil(storeRows.length / pageSize))
   const bandPage = Math.min(page, bandPages)
   const bandSlice = storeRows.slice((bandPage - 1) * pageSize, bandPage * pageSize)
-  const diffStores = STORES.filter((store) => storeStatus(store) === 'diff').length
-  const hasDiff = diffStores > 0
+
   const sortArrow = (key) => (sort.key === key ? <span className="fk-arr">{sort.dir > 0 ? '▲' : '▼'}</span> : null)
 
   const toggleSort = (key) => {
     setSort((current) =>
-      current.key === key ? { key, dir: -current.dir } : { key, dir: key === 'name' ? 1 : -1 },
+      current.key === key ? { key, dir: -current.dir } : { key, dir: ['name', 'pg', 'pb'].includes(key) ? 1 : -1 },
     )
   }
 
   const lastRunText = comparedAt
-    ? `Karşılaştırma zamanı: ${comparedAt} · ${brandName(ccsId)} · ${groupName(groupId)} · ${bandName(groupId, priceGroupId)}`
+    ? `Karşılaştırma zamanı: ${comparedAt} · ${brandName(ccsId)} · ${resolveGroupName(selGroup)} · ${resolveBandName(selGroup, selBand)}`
     : "Filtreleri seçip Karşılaştır'a basın. Hesaplama canlı yapılır."
+
+  const verdictTitle = partialFailed
+    ? `Karşılaştırılan mağazalarda fiyat farkı ${hasDiff ? 'var' : 'yok'}`
+    : multiBand
+      ? `Seçimde fiyat farkı ${hasDiff ? 'var' : 'yok'}`
+      : `Bu fiyat bandında fiyat farkı ${hasDiff ? 'var' : 'yok'}`
+
+  const crumbBandLabel = selBand
+    ? resolveBandName(selGroup, selBand)
+    : `${resolveGroupName(selGroup)} · ${resolveBandName(selGroup, selBand)}`
+
+  const progressLabel = selBand ? 'Bu bantta' : 'Seçimde'
 
   return (
     <div className="fk">
@@ -499,14 +530,16 @@ export default function ChannelPriceComparison() {
 
       <section className="fk-card fk-filters" aria-label="Filtreler">
         <div className="fk-field">
-          <label htmlFor="fk-brand">Marka</label>
+          <label htmlFor="fk-brand">Marka *</label>
           <select
             id="fk-brand"
             value={ccsId}
             disabled={running}
             onChange={(event) => {
               setCcsId(event.target.value)
-              clearRunView()
+              setGroupId('')
+              setPriceGroupId('')
+              resetRunView()
             }}
           >
             {BRANDS.map((brand) => (
@@ -526,39 +559,41 @@ export default function ChannelPriceComparison() {
             onChange={(event) => {
               const next = event.target.value
               setGroupId(next)
-              setPriceGroupId(BANDS[next][0].id)
-              clearRunView()
+              setPriceGroupId('')
+              resetRunView()
             }}
           >
+            <option value="">Tümü</option>
             {GROUPS.map((group) => (
               <option key={group.id} value={group.id}>
                 {group.name} ({group.id})
               </option>
             ))}
           </select>
-          <small>product/group/list</small>
+          <small>İsteğe bağlı · product/group/list</small>
         </div>
         <div className="fk-field">
           <label htmlFor="fk-band">Fiyat bandı</label>
           <select
             id="fk-band"
             value={priceGroupId}
-            disabled={running}
+            disabled={running || !groupId}
             onChange={(event) => {
               setPriceGroupId(event.target.value)
-              clearRunView()
+              resetRunView()
             }}
           >
-            {bands.map((band) => (
+            <option value="">Tümü</option>
+            {bandsForGroup.map((band) => (
               <option key={band.id} value={band.id}>
                 {band.name} ({band.id})
               </option>
             ))}
           </select>
-          <small>price/group/list · seçilen ürün grubuna göre</small>
+          <small>İsteğe bağlı · ürün grubu seçilince açılır</small>
         </div>
         <div className="fk-field">
-          <label htmlFor="fk-channel">Kanal</label>
+          <label htmlFor="fk-channel">Kanal *</label>
           <select id="fk-channel" disabled>
             <option>Trendyol Go</option>
           </select>
@@ -574,19 +609,19 @@ export default function ChannelPriceComparison() {
         <section className="fk-card fk-progress" aria-live="polite">
           <div className="fk-prow">
             <span>
-              Bu bantta <b>{TOTAL_STORES} mağaza</b> karşılaştırılacak.
+              {progressLabel} <b>{progressTotal} mağaza</b> karşılaştırılacak.
             </span>
             <button type="button" className="fk-btn fk-danger" onClick={stopCompare}>
               Karşılaştırmayı durdur
             </button>
           </div>
           <div className="fk-bar">
-            <i style={{ width: `${(progress / TOTAL_STORES) * 100}%` }} />
+            <i style={{ width: `${progressTotal ? (progress / progressTotal) * 100 : 0}%` }} />
           </div>
           <div className="fk-prow">
-            <span>{progress < TOTAL_STORES ? 'Kanal ve CCS fiyatları alınıyor…' : 'Karşılaştırma tamamlandı.'}</span>
+            <span>{progress < progressTotal ? 'Kanal ve CCS fiyatları alınıyor…' : 'Karşılaştırma tamamlandı.'}</span>
             <b>
-              {progress} / {TOTAL_STORES} mağaza tamamlandı
+              {progress} / {progressTotal} mağaza tamamlandı
             </b>
           </div>
         </section>
@@ -594,183 +629,225 @@ export default function ChannelPriceComparison() {
 
       {notice ? <section className="fk-card fk-notice">{notice}</section> : null}
 
+      {view !== 'none' ? (
+        <nav className="fk-crumbs" aria-label="Konum">
+          <button type="button" onClick={backToBand}>
+            {crumbBandLabel}
+          </button>
+          {view === 'rest' && rest ? (
+            <>
+              {' '}
+              › <b>{rest.name} · {rest.store}</b>
+            </>
+          ) : null}
+        </nav>
+      ) : null}
+
       {view === 'band' ? (
         <div className="fk-stack">
           <section className={`fk-card fk-verdict ${hasDiff ? 'bad' : 'ok'}`}>
             <div>
-              <div className="fk-big">
-                {FAILED.length ? 'Karşılaştırılan mağazalarda' : 'Bu fiyat bandında'} fiyat farkı {hasDiff ? 'var' : 'yok'}
-              </div>
+              <div className="fk-big">{verdictTitle}</div>
               <div className="fk-meta">
-                {brandName(ccsId)} · {groupName(groupId)} · {bandName(groupId, priceGroupId)} · Trendyol Go · {STORES.length}{' '}
-                mağaza karşılaştırıldı
+                {brandName(ccsId)} · {resolveGroupName(selGroup)} · {resolveBandName(selGroup, selBand)} · Trendyol Go ·{' '}
+                {activeStores.length} mağaza karşılaştırıldı
+                {multiBand ? ` · ${summaries.length} fiyat bandı` : ''}
               </div>
+            </div>
+            <div className="fk-export">
+              <button
+                type="button"
+                className="fk-btn fk-ghost"
+                onClick={() => {
+                  try {
+                    exportChannelPriceComparisonExcel({
+                      stores: activeStores,
+                      ccsId: Number(ccsId),
+                      groupId: selGroup,
+                      bandId: selBand,
+                      comparedAt,
+                    })
+                    setExportMsg('Excel dosyası indirildi (Ürünler · Opsiyonlar).')
+                  } catch (e) {
+                    setExportMsg(e?.message || 'Excel oluşturulamadı.')
+                  }
+                }}
+              >
+                Excel&apos;e aktar
+              </button>
+              {exportMsg ? <span className="fk-exportmsg">{exportMsg}</span> : null}
             </div>
           </section>
 
-          {FAILED.length ? (
+          {partialFailed ? (
             <section className="fk-failwarn">
-              ⚠ {FAILED.length} mağaza kanal yanıt vermediği için karşılaştırılamadı:{' '}
-              {FAILED.map((store) => `${store.name} (${store.store})`).join(', ')}. Yeniden karşılaştırabilirsiniz.
+              ⚠ {activeFailed.length} mağaza karşılaştırılamadı:{' '}
+              {activeFailed.map((store) => `${store.name} (${store.store}) – ${store.reason}`).join(', ')}. Yeniden
+              karşılaştırabilirsiniz.
             </section>
           ) : null}
 
-          <section className="fk-stats fk-stats--kpi" aria-label="Özet göstergeler">
+          {multiBand ? (
+            <section className="fk-card">
+              <div className="fk-panelhead">
+                <h2>Bant kararları ({summaries.length})</h2>
+                <span>Bir banda tıklayın; restoran listesi o banda süzülür, tekrar tıklayınca süzme kalkar</span>
+              </div>
+              <div className="fk-tablewrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ürün grubu</th>
+                      <th>Fiyat bandı</th>
+                      <th className="fk-num">Mağaza</th>
+                      <th className="fk-num">Fiyat farkı olan</th>
+                      <th className="fk-num">Eksik kayıtlı</th>
+                      <th>Karar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summaries.map((band) => (
+                      <tr
+                        key={band.key}
+                        className={`fk-click${bandFilter === band.key ? ' fk-open' : ''}`}
+                        tabIndex={0}
+                        onClick={() => {
+                          setBandFilter((current) => (current === band.key ? null : band.key))
+                          setPage(1)
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            setBandFilter((current) => (current === band.key ? null : band.key))
+                            setPage(1)
+                          }
+                        }}
+                      >
+                        <td>{resolveGroupName(band.pg)}</td>
+                        <td>
+                          {resolveBandName(band.pg, band.pb)}{' '}
+                          <span className="fk-mono">({band.pb})</span>
+                        </td>
+                        <td className="fk-num">{band.n}</td>
+                        <td className="fk-num">{band.diffCount}</td>
+                        <td className="fk-num">{band.missingCount}</td>
+                        <td>
+                          <span className={`fk-pill fk-${band.diffCount ? 'warn' : 'ok'}`}>
+                            {band.failed ? 'Karşılaştırılan mağazalarda ' : ''}Fiyat farkı {band.diffCount ? 'var' : 'yok'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
+
+          <section className="fk-stats" aria-label="Özet göstergeler">
+            <div className="fk-card fk-stat">
+              <div className="fk-k">Restoran (mağaza satırı)</div>
+              <div className="fk-v">{activeStores.length}</div>
+            </div>
             <div className="fk-card fk-stat warn">
-              <div className="fk-k">Fiyat farkı (ürün + opsiyon)</div>
-              <div className="fk-v">{kpiCounts.diff}</div>
+              <div className="fk-k">Fiyat farkı olan</div>
+              <div className="fk-v">{diffStores}</div>
             </div>
             <div className="fk-card fk-stat info">
-              <div className="fk-k">Eksik kayıt</div>
-              <div className="fk-v">{kpiCounts.missing}</div>
+              <div className="fk-k">Eksik kayıtlı</div>
+              <div className="fk-v">{missStores}</div>
             </div>
-            <div className="fk-card fk-stat off">
-              <div className="fk-k">Kanalda pasif</div>
-              <div className="fk-v">{kpiCounts.pasif}</div>
-            </div>
-            <div className="fk-card fk-stat">
-              <div className="fk-k">Karşılaştırılamayan opsiyon</div>
-              <div className="fk-v">{kpiCounts.nogroup}</div>
+            <div className="fk-card fk-stat ok">
+              <div className="fk-k">Farksız</div>
+              <div className="fk-v">{okStores}</div>
             </div>
           </section>
 
           <section className="fk-card">
             <div className="fk-panelhead">
-              <h2>Restoranlar ({STORES.length})</h2>
-              <span>Restoran adına tıklayın; tekrar tıklayınca detay kapanır</span>
+              <h2>
+                Restoranlar
+                {bandFilter
+                  ? ` · ${resolveBandName(bandFilter.split('|')[0], bandFilter.split('|')[1])}`
+                  : ''}
+              </h2>
+              <span>Bir restorana tıklayın, ürünleri açılır</span>
             </div>
-            <div className="fk-tools fk-tools--band" role="toolbar" aria-label="Restoran ve ürün filtreleri">
+            <div className="fk-tools">
               <input
                 type="search"
-                className="fk-tools__search"
                 value={search}
-                placeholder="Restoran adı veya Trendyol store ID ara"
+                placeholder="Restoran adı, Global ID veya Kanal ID ara"
                 aria-label="Restoran ara"
                 onChange={(event) => {
                   setSearch(event.target.value)
                   setPage(1)
                 }}
               />
-              <input
-                type="search"
-                className="fk-tools__search"
-                value={productSearch}
-                placeholder="Ürün adı ara"
-                aria-label="Ürün adı ara"
-                onChange={(event) => {
-                  setProductSearch(event.target.value)
-                  setPage(1)
-                  setDetailPage({ menu: 1, single: 1 })
-                }}
-              />
-              <div className="fk-chips fk-chips--band" role="group" aria-label="Durum filtresi">
-                {FILTERS.map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`fk-chip${filter === key ? ' on' : ''}`}
-                    onClick={() => {
-                      setFilter(key)
-                      setOpen(new Set())
-                      setPage(1)
-                      setDetailPage({ menu: 1, single: 1 })
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
             </div>
             <div className="fk-tablewrap">
               <table>
                 <thead>
                   <tr>
+                    <th>Marka</th>
                     <th>
                       <button type="button" className="fk-sort" onClick={() => toggleSort('name')}>
                         Restoran {sortArrow('name')}
                       </button>
                     </th>
-                    <th>Trendyol store ID</th>
-                    <th>Global store ID</th>
+                    <th>Global ID</th>
+                    <th>Kanal ID</th>
+                    <th>
+                      <button type="button" className="fk-sort" onClick={() => toggleSort('pg')}>
+                        Ürün grubu {sortArrow('pg')}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="fk-sort" onClick={() => toggleSort('pb')}>
+                        Fiyat bandı {sortArrow('pb')}
+                      </button>
+                    </th>
+                    <th className="fk-num">
+                      <button type="button" className="fk-sort" onClick={() => toggleSort('diff')}>
+                        Farklı kalem {sortArrow('diff')}
+                      </button>
+                    </th>
+                    <th className="fk-num">
+                      <button type="button" className="fk-sort" onClick={() => toggleSort('missing')}>
+                        Eksik kayıt {sortArrow('missing')}
+                      </button>
+                    </th>
+                    <th>Durum</th>
                   </tr>
                 </thead>
                 <tbody>
                   {bandSlice.length ? (
-                    bandSlice.map(({ store }) => {
-                      const expanded = restId === store.id
-                      return (
-                        <Fragment key={store.id}>
-                          <tr className={expanded ? 'fk-selected' : ''}>
-                            <td>
-                              <button
-                                type="button"
-                                className={`fk-restName${expanded ? ' fk-restName--open' : ''}`}
-                                aria-expanded={expanded}
-                                onClick={() => toggleRestaurant(store.id)}
-                              >
-                                <span className="fk-caret" aria-hidden>
-                                  ▸
-                                </span>
-                                {store.name}
-                              </button>
-                            </td>
-                            <td className="fk-mono">{store.store}</td>
-                            <td className="fk-mono">{store.g || '–'}</td>
-                          </tr>
-                          {expanded && rest && detailRows.counts ? (
-                            <tr className="fk-detailRow">
-                              <td colSpan={3}>
-                                <div
-                                  className="fk-detailInner"
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                                  role="region"
-                                  aria-label={`${store.name} ürün detayı`}
-                                >
-                                  <ProductTable
-                                    title="Menüler"
-                                    hint="Satıra tıklayın, opsiyon türleri açılır"
-                                    rows={detailRows.menus}
-                                    pageKey="menu"
-                                    page={detailPage.menu}
-                                    size={pageSize}
-                                    filter={filter}
-                                    open={open}
-                                    onToggle={toggleOpen}
-                                    onPage={changePage}
-                                    onSize={changePageSize}
-                                    emptyText="Bu filtrede menü yok."
-                                  />
-                                  <ProductTable
-                                    title="Tekli ürünler"
-                                    hint="Değiştiricileri olan ürünler açılır"
-                                    rows={detailRows.singles}
-                                    pageKey="single"
-                                    page={detailPage.single}
-                                    size={pageSize}
-                                    filter={filter}
-                                    open={open}
-                                    onToggle={toggleOpen}
-                                    onPage={changePage}
-                                    onSize={changePageSize}
-                                    emptyText="Bu filtrede tekli ürün yok."
-                                  />
-                                  <div className="fk-note">
-                                    &quot;İstemiyorum&quot; içeren kayıtlar listelenmez. Fark = kanal − CCS; tolerans yok.
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          ) : null}
-                        </Fragment>
-                      )
-                    })
+                    bandSlice.map(({ store, status, counts }) => (
+                      <tr
+                        key={store.id}
+                        className="fk-click"
+                        tabIndex={0}
+                        onClick={() => openRestaurant(store.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') openRestaurant(store.id)
+                        }}
+                      >
+                        <td>{brandName(ccsId)}</td>
+                        <td>{store.name}</td>
+                        <td className="fk-mono">{store.g}</td>
+                        <td className="fk-mono">{store.store}</td>
+                        <td>{resolveGroupName(store.pg)}</td>
+                        <td>{resolveBandName(store.pg, store.pb)}</td>
+                        <td className="fk-num">{counts.diff}</td>
+                        <td className="fk-num">{counts.missing}</td>
+                        <td>
+                          <StorePill status={status} />
+                        </td>
+                      </tr>
+                    ))
                   ) : (
                     <tr>
-                      <td colSpan={3} className="fk-empty">
-                        {search.trim() || productSearch.trim() || filter !== 'all'
-                          ? 'Aramaya uyan restoran yok.'
-                          : 'Restoran bulunamadı.'}
+                      <td colSpan={9} className="fk-empty">
+                        Aramaya uyan restoran yok.
                       </td>
                     </tr>
                   )}
@@ -779,29 +856,98 @@ export default function ChannelPriceComparison() {
             </div>
             <Pager total={storeRows.length} page={bandPage} pageKey="band" size={pageSize} onPage={changePage} onSize={changePageSize} />
           </section>
+        </div>
+      ) : null}
 
-          <section className="fk-card fk-exportFooter">
-            <button
-              type="button"
-              className="fk-btn fk-ghost"
-              onClick={() => {
-                try {
-                  exportChannelPriceComparisonExcel({
-                    stores: STORES,
-                    brandName: brandName(ccsId),
-                    groupName: groupName(groupId),
-                    bandName: bandName(groupId, priceGroupId),
-                    comparedAt,
-                  })
-                  setExportMsg('Excel dosyası indirildi (Ürünler · Opsiyonlar).')
-                } catch (e) {
-                  setExportMsg(e?.message || 'Excel oluşturulamadı.')
-                }
-              }}
-            >
-              Excel&apos;e ekle
-            </button>
-            {exportMsg ? <span className="fk-exportmsg">{exportMsg}</span> : null}
+      {view === 'rest' && rest && detailRows.counts ? (
+        <div className="fk-stack">
+          <section className="fk-stats fk-stats--kpi" aria-label="Mağaza göstergeleri">
+            <div className="fk-card fk-stat warn">
+              <div className="fk-k">Fiyat farkı (ürün + opsiyon)</div>
+              <div className="fk-v">{detailRows.counts.diff}</div>
+            </div>
+            <div className="fk-card fk-stat info">
+              <div className="fk-k">Eksik kayıt</div>
+              <div className="fk-v">{detailRows.counts.missing}</div>
+            </div>
+            <div className="fk-card fk-stat off">
+              <div className="fk-k">Kanalda pasif</div>
+              <div className="fk-v">{detailRows.counts.pasif}</div>
+            </div>
+            <div className="fk-card fk-stat">
+              <div className="fk-k">Karşılaştırılamayan opsiyon</div>
+              <div className="fk-v">{detailRows.counts.nogroup}</div>
+            </div>
+          </section>
+
+          <section className="fk-card">
+            <div className="fk-panelhead fk-panelhead--inline">
+              <h2>
+                {rest.name} · Kanal ID {rest.store} · {resolveGroupName(rest.pg)} / {resolveBandName(rest.pg, rest.pb)}
+              </h2>
+              <div className="fk-chips" role="group" aria-label="Durum filtresi">
+                {FILTERS.map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`fk-chip${filter === key ? ' on' : ''}`}
+                    onClick={() => {
+                      setFilter(key)
+                      setOpen(new Set())
+                      setDetailPage({ menu: 1, single: 1 })
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="fk-tools">
+              <input
+                type="search"
+                value={productSearch}
+                placeholder="Ürün adı ara"
+                aria-label="Ürün ara"
+                onChange={(event) => {
+                  setProductSearch(event.target.value)
+                  setDetailPage({ menu: 1, single: 1 })
+                }}
+              />
+            </div>
+            <ProductTable
+              title="Menüler"
+              hint="Satıra tıklayın, opsiyon türleri açılır; ▸ olan opsiyonun değiştiricileri de açılır (E10)"
+              rows={detailRows.menus}
+              pageKey="menu"
+              page={detailPage.menu}
+              size={pageSize}
+              filter={filter}
+              open={open}
+              onToggle={toggleOpen}
+              onPage={changePage}
+              onSize={changePageSize}
+              emptyText="Bu filtrede menü yok."
+            />
+            <ProductTable
+              title="Tekli ürünler"
+              hint="Değiştiricileri olan ürünler açılır (C9 servisi gelince) · Mongo eşleşmesi olmayanlar da burada (E5)"
+              rows={detailRows.singles}
+              pageKey="single"
+              page={detailPage.single}
+              size={pageSize}
+              filter={filter}
+              open={open}
+              onToggle={toggleOpen}
+              onPage={changePage}
+              onSize={changePageSize}
+              emptyText="Bu filtrede tekli ürün yok."
+            />
+            <div className="fk-note">
+              &quot;İstemiyorum&quot; içeren kayıtlar (CCS kodu 20000) listelenmez ve opsiyon türü eşleşmesini bozmaz.
+              Fark mutlak değer olarak (işaretsiz) gösterilir; tolerans yok. Kanalda pasif kayıtların fiyatı da
+              karşılaştırılır; etiket fiyat sonucunun yanında gösterilir (F-P25). Kanalda yok veya CCS&apos;te yok olan
+              ürünlerin opsiyonları karşılaştırılmaz (E6).
+            </div>
           </section>
         </div>
       ) : null}
