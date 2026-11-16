@@ -26,13 +26,51 @@ export const BANDS = {
 
 const O = (name, ty, plu, k, c, st, mods) => ({ name, ty, plu, k, c, st, mods })
 
+export const CHANNELS = [
+  { id: 'TY', label: 'Trendyol Go' },
+  { id: 'MG', label: 'Migros' },
+]
+
+export function channelLabel(channelId) {
+  return CHANNELS.find((ch) => ch.id === channelId)?.label ?? 'Trendyol Go'
+}
+
+export function channelTypeLabel(channelId) {
+  return channelId === 'MG' ? 'Migros' : 'Trendyol'
+}
+
+export function formatChannelItemId(channelId, id) {
+  if (id == null || id === '' || id === '–') return '–'
+  if (channelId !== 'MG') return id
+  return `2300000${String(id).slice(-7).padStart(7, '0')}`
+}
+
+export function localizeWhy(text, channelId) {
+  if (!text || channelId !== 'MG') return text
+  return text.replace(/Trendyol/g, 'Migros')
+}
+
+const MIG_STORE_ID = {
+  '281001': '60471',
+  '281010': '60488',
+  '281020': '60502',
+  '281030': '60515',
+  '281040': '60530',
+  '281045': '60544',
+  '281050': '60550',
+  '281060': '60555',
+}
+
 function modAci() {
   return [
     {
       name: 'Peynir Seçimi',
       ty: '141603',
       sub: '999950',
-      opts: [O('Peynir 1 Adet', '1273230', '111054', 15, 15)],
+      opts: [
+        O('Peynir 1 Adet', '1273230', '111054', 15, 15),
+        O('Peynir 2 Adet', '1273232', '111054', 30, 15, 'adet'),
+      ],
     },
     {
       name: 'Ekstra Lavaş Seçimi',
@@ -58,7 +96,10 @@ function modCacik() {
       name: 'Peynir Seçimi',
       ty: '141603',
       sub: '999950',
-      opts: [O('Peynir 1 Adet', '1273230', '111054', 15, 15)],
+      opts: [
+        O('Peynir 1 Adet', '1273230', '111054', 15, 15),
+        O('Peynir 2 Adet', '1273232', '111054', 30, 15, 'adet'),
+      ],
     },
     {
       name: 'Ekstra Lavaş Seçimi',
@@ -335,20 +376,48 @@ export const ALL_STORES = STORE_SEED.map((row, index) => ({
   items: template(row.v),
 }))
 
-export const ALL_FAILED = [
-  { name: 'UD Pendik', store: '281050', g: '40650', pg: '1001', pb: '1004', reason: 'Trendyol 504' },
+const ALL_FAILED_TY = [
+  {
+    name: 'UD Pendik',
+    store: '281050',
+    g: '40650',
+    pg: '1001',
+    pb: '1004',
+    reason: 'Trendyol menü servisi yanıt vermedi (HTTP 504)',
+  },
   { name: 'UD Bağdat Caddesi', store: '281060', g: '40655', pg: '1001', pb: '1000', reason: 'Kanal menüsü boş döndü' },
+]
+
+const ALL_FAILED_MG = [
+  {
+    name: 'UD Pendik',
+    store: '60550',
+    g: '40650',
+    pg: '1001',
+    pb: '1004',
+    reason: 'Migros menü servisi yanıt vermedi (HTTP 504)',
+  },
+  { name: 'UD Bağdat Caddesi', store: '60555', g: '40655', pg: '1001', pb: '1000', reason: 'Migros API anahtarı bulunamadı' },
 ]
 
 /** @deprecated mock uyumluluğu — aktif kapsam bileşende tutulur */
 export const STORES = ALL_STORES
-export const FAILED = ALL_FAILED
+export const FAILED = ALL_FAILED_TY
 
-export function filterScope(groupId, bandId) {
+export function filterScope(groupId, bandId, channelId = 'TY') {
   const inScope = (row) => (!groupId || row.pg === groupId) && (!bandId || row.pb === bandId)
+  if (channelId === 'MG') {
+    const stores = ALL_STORES.filter((row) => !row.second)
+      .map((row) => ({
+        ...row,
+        store: MIG_STORE_ID[row.store] ?? row.store,
+      }))
+      .filter(inScope)
+    return { stores, failed: ALL_FAILED_MG.filter(inScope) }
+  }
   return {
     stores: ALL_STORES.filter(inScope),
-    failed: ALL_FAILED.filter(inScope),
+    failed: ALL_FAILED_TY.filter(inScope),
   }
 }
 
@@ -405,6 +474,7 @@ export const STATUS_LABEL = {
   kanaldayok: ['Kanalda yok', 'info'],
   ccsyok: ["CCS'te yok", 'bad'],
   nogroup: ['Karşılaştırılamadı · eşleşen opsiyon türü yok', 'bad'],
+  adet: ["CCS'te ürünün tekli ürün fiyatı gönderilmektedir", 'off'],
 }
 
 export const STORE_STATUS_LABEL = {
@@ -420,6 +490,7 @@ export function isPasif(item) {
 }
 
 export function itemStatus(item) {
+  if (item.st === 'adet') return 'adet'
   if (item.st && !isPasif(item)) return item.st
   if (item.c === null) return 'nogroup'
   return item.k === item.c ? 'ok' : 'diff'
@@ -430,8 +501,10 @@ const OPTION_WHY = {
   ccsyok: "Mongo'da Trendyol eşleşmesi yok",
 }
 
-export function optionWhyText(status) {
-  return OPTION_WHY[status] ?? ''
+export function optionWhyText(status, channelId = 'TY') {
+  const text = OPTION_WHY[status]
+  if (!text) return ''
+  return localizeWhy(text, channelId)
 }
 
 export function isMissingStatus(status) {
@@ -481,6 +554,7 @@ export function countItems(items) {
   const counts = { diff: 0, missing: 0, pasif: 0, ok: 0, nogroup: 0 }
   const seen = new Set()
   const add = (status, pasifRow) => {
+    if (status === 'adet') return
     if (pasifRow) counts.pasif += 1
     if (status === 'diff') counts.diff += 1
     else if (isMissingStatus(status)) {

@@ -2,18 +2,23 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   BANDS,
   BRANDS,
+  CHANNELS,
   FILTERS,
   GROUPS,
   STATUS_LABEL,
   STORE_STATUS_LABEL,
   bandSummaries,
+  channelLabel,
+  channelTypeLabel,
   compareStores,
   countItems,
   expandable,
   filterScope,
+  formatChannelItemId,
   formatDelta,
   formatMoney,
   itemStatus,
+  localizeWhy,
   optionCanOpen,
   optionStatus,
   optionTags,
@@ -30,6 +35,14 @@ import {
   visibleModifiers,
 } from './channelPriceComparison/catalog'
 import { exportChannelPriceComparisonExcel } from './channelPriceComparison/channelPriceExport'
+import {
+  hasPriceComparisonQuery,
+  loadSavedRun,
+  parseLinkSearch,
+  replaceUrl,
+  sameFilters,
+  saveSavedRun,
+} from './channelPriceComparison/urlSync'
 import './ChannelPriceComparison.css'
 
 const PAGE_SIZES = [50, 75, 100]
@@ -105,7 +118,7 @@ function Pager({ total, page, pageKey, size, onPage, onSize }) {
   )
 }
 
-function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
+function GroupRows({ productKeyValue, groups, filter, open, onToggle, channelId }) {
   return groups.map((group) => {
     const groupPill = group.chMissing ? (
       <span className="fk-pill fk-info">Kanalda yok · opsiyon türü</span>
@@ -123,8 +136,8 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
         <tr className="fk-grp">
           <td colSpan={8}>
             <b>{group.name}</b>
-            {' · Trendyol tür ID '}
-            {group.chMissing ? '–' : group.ty}
+            {` · ${channelTypeLabel(channelId)} tür ID `}
+            {group.chMissing ? '–' : formatChannelItemId(channelId, group.ty)}
             {' · CCS subgroup '}
             {group.sub || '–'} {groupPill}
           </td>
@@ -136,7 +149,7 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
           const isOpen = canOpen && (filter !== 'all' ? !open.has(optionKey) : open.has(optionKey))
           const context = filter !== 'all' && optionTags(group, option).every((tag) => tag.cat !== filter)
           const mods = isOpen ? (filter !== 'all' ? visibleModifiers(filter, group, option) : option.mods) : []
-          const why = optionWhyText(status)
+          const why = optionWhyText(status, channelId)
 
           return (
             <Fragment key={optionKey}>
@@ -160,7 +173,7 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
                   {option.name}
                   {context ? <span className="fk-ctxnote">filtreye uyan değiştiricileri var</span> : null}
                 </td>
-                <td className="fk-mono">{group.chMissing ? '–' : option.ty || '–'}</td>
+                <td className="fk-mono">{group.chMissing ? '–' : formatChannelItemId(channelId, option.ty)}</td>
                 <td className="fk-mono">{option.plu || '–'}</td>
                 <td />
                 <td className="fk-num">{group.chMissing ? '–' : formatMoney(option.k)}</td>
@@ -176,8 +189,8 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
                   <tr className="fk-grp fk-grp2">
                     <td colSpan={8}>
                       <b>{modGroup.name}</b>
-                      {' · Trendyol tür ID '}
-                      {modGroup.ty}
+                      {` · ${channelTypeLabel(channelId)} tür ID `}
+                      {formatChannelItemId(channelId, modGroup.ty)}
                       {' · CCS subgroup '}
                       {modGroup.sub || '–'}{' '}
                       {modGroup.sub ? <span className="fk-pill fk-ok">Tür eşleşti</span> : <Pill status="nogroup" />}
@@ -188,7 +201,7 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
                     return (
                       <tr key={`${optionKey}-${modGroup.ty}-${mod.ty}`} className={`fk-opt fk-opt2${modStatus === 'diff' ? ' fk-diff' : ''}`}>
                         <td>{mod.name}</td>
-                        <td className="fk-mono">{mod.ty || '–'}</td>
+                        <td className="fk-mono">{formatChannelItemId(channelId, mod.ty)}</td>
                         <td className="fk-mono">{mod.plu || '–'}</td>
                         <td />
                         <td className="fk-num">{formatMoney(mod.k)}</td>
@@ -196,7 +209,9 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
                         <td className="fk-num fk-delta">{formatDelta(mod)}</td>
                         <td>
                           <Pill status={modStatus} />
-                          {optionWhyText(modStatus) ? <div className="fk-ctxnote fk-why">{optionWhyText(modStatus)}</div> : null}
+                          {optionWhyText(modStatus, channelId) ? (
+                            <div className="fk-ctxnote fk-why">{optionWhyText(modStatus, channelId)}</div>
+                          ) : null}
                         </td>
                       </tr>
                     )
@@ -211,7 +226,7 @@ function GroupRows({ productKeyValue, groups, filter, open, onToggle }) {
   })
 }
 
-function ProductBlock({ product, filter, open, onToggle }) {
+function ProductBlock({ product, filter, open, onToggle, channelId }) {
   const canExpand = expandable(product)
   const key = productKey(product)
   const filtered = filter !== 'all'
@@ -243,7 +258,7 @@ function ProductBlock({ product, filter, open, onToggle }) {
           {product.name ? product.name : <span className="fk-muted">{product.ccsName}</span>}
           {context ? <span className="fk-ctxnote">filtreye uyan opsiyonları var</span> : null}
         </td>
-        <td className="fk-mono">{product.ty || '–'}</td>
+        <td className="fk-mono">{formatChannelItemId(channelId, product.ty)}</td>
         <td className="fk-mono">{product.plu || '–'}</td>
         <td>{product.ccsName || '–'}</td>
         <td className="fk-num">{formatMoney(product.k)}</td>
@@ -251,17 +266,38 @@ function ProductBlock({ product, filter, open, onToggle }) {
         <td className="fk-num fk-delta">{formatDelta(product)}</td>
         <td>
           <TagList tags={rowTags(product)} />
-          {product.why ? <div className="fk-ctxnote fk-why">{product.why}</div> : null}
+          {product.why ? <div className="fk-ctxnote fk-why">{localizeWhy(product.why, channelId)}</div> : null}
         </td>
       </tr>
       {isOpen ? (
-        <GroupRows productKeyValue={key} groups={groups} filter={filter} open={open} onToggle={onToggle} />
+        <GroupRows
+          productKeyValue={key}
+          groups={groups}
+          filter={filter}
+          open={open}
+          onToggle={onToggle}
+          channelId={channelId}
+        />
       ) : null}
     </Fragment>
   )
 }
 
-function ProductTable({ title, hint, rows, pageKey, page, size, filter, open, onToggle, onPage, onSize, emptyText }) {
+function ProductTable({
+  title,
+  hint,
+  rows,
+  pageKey,
+  page,
+  size,
+  filter,
+  open,
+  onToggle,
+  onPage,
+  onSize,
+  emptyText,
+  channelId,
+}) {
   const pages = Math.max(1, Math.ceil(rows.length / size))
   const safePage = Math.min(page, pages)
   const slice = rows.slice((safePage - 1) * size, safePage * size)
@@ -294,6 +330,7 @@ function ProductTable({ title, hint, rows, pageKey, page, size, filter, open, on
                   filter={filter}
                   open={open}
                   onToggle={onToggle}
+                  channelId={channelId}
                 />
               ))
             ) : (
@@ -311,14 +348,19 @@ function ProductTable({ title, hint, rows, pageKey, page, size, filter, open, on
   )
 }
 
-const initialScope = filterScope('', '')
+const DEFAULT_FILTERS = { brand: '4', groupId: '', bandId: '', channel: 'TY' }
+const initialScope = filterScope('', '', 'TY')
 
 export default function ChannelPriceComparison() {
   const [ccsId, setCcsId] = useState('4')
+  const [channelId, setChannelId] = useState('TY')
   const [groupId, setGroupId] = useState('')
   const [priceGroupId, setPriceGroupId] = useState('')
   const [selGroup, setSelGroup] = useState('')
   const [selBand, setSelBand] = useState('')
+  const [selChannel, setSelChannel] = useState('TY')
+  const [linkOpened, setLinkOpened] = useState(false)
+  const [toastMsg, setToastMsg] = useState('')
   const [activeStores, setActiveStores] = useState(initialScope.stores)
   const [activeFailed, setActiveFailed] = useState(initialScope.failed)
   const [view, setView] = useState('band')
@@ -342,11 +384,75 @@ export default function ChannelPriceComparison() {
   const [notice, setNotice] = useState('')
   const [exportMsg, setExportMsg] = useState('')
   const timerRef = useRef(null)
+  const toastTimerRef = useRef(null)
+  const bootedRef = useRef(false)
 
   useEffect(() => () => clearTimeout(timerRef.current), [])
 
+  useEffect(() => {
+    if (!toastMsg) return undefined
+    clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => setToastMsg(''), 4500)
+    return () => clearTimeout(toastTimerRef.current)
+  }, [toastMsg])
+
+  useEffect(() => {
+    if (bootedRef.current) return
+    bootedRef.current = true
+
+    if (hasPriceComparisonQuery()) {
+      const { filters, fromLink, linkInvalid } = parseLinkSearch(window.location.search)
+      if (fromLink && filters) {
+        setCcsId(filters.brand)
+        setGroupId(filters.groupId)
+        setPriceGroupId(filters.bandId)
+        setChannelId(filters.channel)
+
+        const saved = loadSavedRun()
+        if (saved && sameFilters(saved.filters, filters) && saved.comparedAt) {
+          const scope = filterScope(filters.groupId, filters.bandId, filters.channel)
+          setActiveStores(scope.stores)
+          setActiveFailed(scope.failed)
+          setSelGroup(filters.groupId)
+          setSelBand(filters.bandId)
+          setSelChannel(filters.channel)
+          setComparedAt(saved.comparedAt)
+          setView('band')
+          setLinkOpened(false)
+        } else {
+          setView('none')
+          setLinkOpened(true)
+          if (linkInvalid) {
+            setToastMsg('Linkteki seçimlerin bir kısmı bulunamadı. Eksik seçimleri tamamlayın.')
+          }
+        }
+      }
+      return
+    }
+
+    replaceUrl(DEFAULT_FILTERS)
+    const saved = loadSavedRun()
+    if (saved?.comparedAt && sameFilters(saved.filters, DEFAULT_FILTERS)) {
+      setComparedAt(saved.comparedAt)
+    }
+  }, [])
+
   const rest = activeStores.find((store) => store.id === restId) ?? null
   const bandsForGroup = groupId ? BANDS[groupId] ?? [] : []
+
+  const currentFilters = () => ({
+    brand: ccsId,
+    groupId,
+    bandId: priceGroupId,
+    channel: channelId,
+  })
+
+  const syncFiltersToUrl = () => {
+    setLinkOpened(false)
+    replaceUrl(currentFilters())
+  }
+
+  const canCompare = Boolean(ccsId && channelId && !running)
 
   const resetRunView = (message = '') => {
     setView('none')
@@ -401,10 +507,13 @@ export default function ChannelPriceComparison() {
     setExportMsg('')
     setBandFilter(null)
     setRestId(null)
+    setLinkOpened(false)
     setSelGroup(groupId)
     setSelBand(priceGroupId)
+    setSelChannel(channelId)
+    const runFilters = { brand: ccsId, groupId, bandId: priceGroupId, channel: channelId }
 
-    const scope = filterScope(groupId, priceGroupId)
+    const scope = filterScope(groupId, priceGroupId, channelId)
     const total = scope.stores.length + scope.failed.length
     if (!total) {
       resetRunView(
@@ -430,7 +539,10 @@ export default function ChannelPriceComparison() {
       }
       const now = new Date()
       setRunning(false)
-      setComparedAt(`${now.toLocaleDateString('tr-TR')} ${now.toTimeString().slice(0, 5)}`)
+      const at = `${now.toLocaleDateString('tr-TR')} ${now.toTimeString().slice(0, 5)}`
+      setComparedAt(at)
+      saveSavedRun(runFilters, at)
+      replaceUrl(runFilters)
       setView('band')
       setPage(1)
       setSearch('')
@@ -505,9 +617,12 @@ export default function ChannelPriceComparison() {
     )
   }
 
-  const lastRunText = comparedAt
-    ? `Karşılaştırma zamanı: ${comparedAt} · ${brandName(ccsId)} · ${resolveGroupName(selGroup)} · ${resolveBandName(selGroup, selBand)}`
-    : "Filtreleri seçip Karşılaştır'a basın. Hesaplama canlı yapılır."
+  const lastRunText =
+    linkOpened && view === 'none'
+      ? "Linkteki seçimler dolduruldu. Karşılaştır'a basın."
+      : comparedAt && view !== 'none'
+        ? `Karşılaştırma zamanı: ${comparedAt} · ${brandName(ccsId)} · ${resolveGroupName(selGroup)} · ${resolveBandName(selGroup, selBand)} · ${channelLabel(selChannel)}`
+        : "Filtreleri seçip Karşılaştır'a basın. Hesaplama canlı yapılır."
 
   const verdictTitle = partialFailed
     ? `Karşılaştırılan mağazalarda fiyat farkı ${hasDiff ? 'var' : 'yok'}`
@@ -523,6 +638,11 @@ export default function ChannelPriceComparison() {
 
   return (
     <div className="fk">
+      {toastMsg ? (
+        <div className="fk-toast" role="status">
+          {toastMsg}
+        </div>
+      ) : null}
       <div className="fk-title">
         <h1>Kanal–CCS fiyat karşılaştırma</h1>
         <p>Kanaldaki ürün ve opsiyon fiyatları ile CCS delivery fiyatları · ₺ TL</p>
@@ -540,6 +660,7 @@ export default function ChannelPriceComparison() {
               setGroupId('')
               setPriceGroupId('')
               resetRunView()
+              syncFiltersToUrl()
             }}
           >
             {BRANDS.map((brand) => (
@@ -555,12 +676,13 @@ export default function ChannelPriceComparison() {
           <select
             id="fk-group"
             value={groupId}
-            disabled={running}
+            disabled={running || !ccsId}
             onChange={(event) => {
               const next = event.target.value
               setGroupId(next)
               setPriceGroupId('')
               resetRunView()
+              syncFiltersToUrl()
             }}
           >
             <option value="">Tümü</option>
@@ -581,6 +703,7 @@ export default function ChannelPriceComparison() {
             onChange={(event) => {
               setPriceGroupId(event.target.value)
               resetRunView()
+              syncFiltersToUrl()
             }}
           >
             <option value="">Tümü</option>
@@ -594,15 +717,28 @@ export default function ChannelPriceComparison() {
         </div>
         <div className="fk-field">
           <label htmlFor="fk-channel">Kanal *</label>
-          <select id="fk-channel" disabled>
-            <option>Trendyol Go</option>
+          <select
+            id="fk-channel"
+            value={channelId}
+            disabled={running}
+            onChange={(event) => {
+              setChannelId(event.target.value)
+              resetRunView()
+              syncFiltersToUrl()
+            }}
+          >
+            {CHANNELS.map((ch) => (
+              <option key={ch.id} value={ch.id}>
+                {ch.label}
+              </option>
+            ))}
           </select>
-          <small>İlk fazda tek kanal</small>
+          <small>Trendyol Go (Faz 1) · Migros (Faz 2)</small>
         </div>
-        <button type="button" className="fk-btn" disabled={running} onClick={startCompare}>
+        <button type="button" className="fk-btn" disabled={!canCompare} onClick={startCompare}>
           Karşılaştır
         </button>
-        <div className="fk-lastrun">{lastRunText}</div>
+        <div className={`fk-lastrun${linkOpened && view === 'none' ? ' fk-lastrun--link' : ''}`}>{lastRunText}</div>
       </section>
 
       {running ? (
@@ -649,7 +785,8 @@ export default function ChannelPriceComparison() {
             <div>
               <div className="fk-big">{verdictTitle}</div>
               <div className="fk-meta">
-                {brandName(ccsId)} · {resolveGroupName(selGroup)} · {resolveBandName(selGroup, selBand)} · Trendyol Go ·{' '}
+                {brandName(ccsId)} · {resolveGroupName(selGroup)} · {resolveBandName(selGroup, selBand)} ·{' '}
+                {channelLabel(selChannel)} ·{' '}
                 {activeStores.length} mağaza karşılaştırıldı
                 {multiBand ? ` · ${summaries.length} fiyat bandı` : ''}
               </div>
@@ -665,6 +802,7 @@ export default function ChannelPriceComparison() {
                       ccsId: Number(ccsId),
                       groupId: selGroup,
                       bandId: selBand,
+                      channelId: selChannel,
                       comparedAt,
                     })
                     setExportMsg('Excel dosyası indirildi (Ürünler · Opsiyonlar).')
@@ -927,6 +1065,7 @@ export default function ChannelPriceComparison() {
               onPage={changePage}
               onSize={changePageSize}
               emptyText="Bu filtrede menü yok."
+              channelId={selChannel}
             />
             <ProductTable
               title="Tekli ürünler"
@@ -941,6 +1080,7 @@ export default function ChannelPriceComparison() {
               onPage={changePage}
               onSize={changePageSize}
               emptyText="Bu filtrede tekli ürün yok."
+              channelId={selChannel}
             />
             <div className="fk-note">
               &quot;İstemiyorum&quot; içeren kayıtlar (CCS kodu 20000) listelenmez ve opsiyon türü eşleşmesini bozmaz.

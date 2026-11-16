@@ -134,7 +134,7 @@ function fileStamp() {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`
 }
 
-export function exportChannelPriceComparisonExcel({ stores, ccsId, groupId, bandId, comparedAt }) {
+export function exportChannelPriceComparisonExcel({ stores, ccsId, groupId, bandId, channelId, comparedAt }) {
   const productRows = []
   const optionRows = []
 
@@ -161,7 +161,8 @@ export function exportChannelPriceComparisonExcel({ stores, ccsId, groupId, band
     String(value ?? '')
       .toLocaleUpperCase('tr')
       .replace(/\s+/g, '-')
-  const parts = [BRAND_SLUG[ccsId] || slug(ccsId)]
+  const channelSlug = channelId === 'MG' ? 'MIGROS' : 'TRENDYOL'
+  const parts = [channelSlug, BRAND_SLUG[ccsId] || slug(ccsId)]
   if (groupId) parts.push(slug(resolveGroupName(groupId)))
   parts.push(bandId ? slug(resolveBandName(groupId, bandId)) : 'TUM-BANTLAR')
   const fname = `fiyat-karsilastirma_${parts.join('_')}_${stamp}.xlsx`
