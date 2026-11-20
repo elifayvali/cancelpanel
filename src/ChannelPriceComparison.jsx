@@ -438,7 +438,6 @@ export default function ChannelPriceComparison() {
   }, [])
 
   const rest = activeStores.find((store) => store.id === restId) ?? null
-  const bandsForGroup = groupId ? BANDS[groupId] ?? [] : []
 
   const currentFilters = () => ({
     brand: ccsId,
@@ -447,10 +446,22 @@ export default function ChannelPriceComparison() {
     channel: channelId,
   })
 
-  const syncFiltersToUrl = () => {
+  const syncFiltersToUrl = (overrides = {}) => {
     setLinkOpened(false)
-    replaceUrl(currentFilters())
+    replaceUrl({ ...currentFilters(), ...overrides })
   }
+
+  const bandsForSelect = groupId
+    ? (BANDS[groupId] ?? []).map((band) => ({
+        value: band.id,
+        label: `${band.name} (${band.id})`,
+      }))
+    : GROUPS.flatMap((group) =>
+        (BANDS[group.id] ?? []).map((band) => ({
+          value: band.id,
+          label: `${group.name} · ${band.name} (${band.id})`,
+        })),
+      )
 
   const canCompare = Boolean(ccsId && channelId && !running)
 
@@ -656,11 +667,12 @@ export default function ChannelPriceComparison() {
             value={ccsId}
             disabled={running}
             onChange={(event) => {
-              setCcsId(event.target.value)
+              const nextBrand = event.target.value
+              setCcsId(nextBrand)
               setGroupId('')
               setPriceGroupId('')
               resetRunView()
-              syncFiltersToUrl()
+              syncFiltersToUrl({ brand: nextBrand, groupId: '', bandId: '' })
             }}
           >
             {BRANDS.map((brand) => (
@@ -672,59 +684,16 @@ export default function ChannelPriceComparison() {
           <small>brand/getAllWithCcsId · ccsId 1–7, 10</small>
         </div>
         <div className="fk-field">
-          <label htmlFor="fk-group">Ürün grubu</label>
-          <select
-            id="fk-group"
-            value={groupId}
-            disabled={running || !ccsId}
-            onChange={(event) => {
-              const next = event.target.value
-              setGroupId(next)
-              setPriceGroupId('')
-              resetRunView()
-              syncFiltersToUrl()
-            }}
-          >
-            <option value="">Tümü</option>
-            {GROUPS.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name} ({group.id})
-              </option>
-            ))}
-          </select>
-          <small>İsteğe bağlı · product/group/list</small>
-        </div>
-        <div className="fk-field">
-          <label htmlFor="fk-band">Fiyat bandı</label>
-          <select
-            id="fk-band"
-            value={priceGroupId}
-            disabled={running || !groupId}
-            onChange={(event) => {
-              setPriceGroupId(event.target.value)
-              resetRunView()
-              syncFiltersToUrl()
-            }}
-          >
-            <option value="">Tümü</option>
-            {bandsForGroup.map((band) => (
-              <option key={band.id} value={band.id}>
-                {band.name} ({band.id})
-              </option>
-            ))}
-          </select>
-          <small>İsteğe bağlı · ürün grubu seçilince açılır</small>
-        </div>
-        <div className="fk-field">
           <label htmlFor="fk-channel">Kanal *</label>
           <select
             id="fk-channel"
             value={channelId}
             disabled={running}
             onChange={(event) => {
-              setChannelId(event.target.value)
+              const nextChannel = event.target.value
+              setChannelId(nextChannel)
               resetRunView()
-              syncFiltersToUrl()
+              syncFiltersToUrl({ channel: nextChannel })
             }}
           >
             {CHANNELS.map((ch) => (
@@ -734,6 +703,52 @@ export default function ChannelPriceComparison() {
             ))}
           </select>
           <small>Trendyol Go (Faz 1) · Migros (Faz 2)</small>
+        </div>
+        <div className="fk-field">
+          <label htmlFor="fk-group">Ürün grubu</label>
+          <select
+            id="fk-group"
+            value={groupId}
+            disabled={running || !ccsId}
+            onChange={(event) => {
+              const next = event.target.value
+              const nextBand = next && (BANDS[next] ?? []).some((band) => band.id === priceGroupId) ? priceGroupId : ''
+              setGroupId(next)
+              setPriceGroupId(nextBand)
+              resetRunView()
+              syncFiltersToUrl({ groupId: next, bandId: nextBand })
+            }}
+          >
+            <option value="">Tümü</option>
+            {GROUPS.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name} ({group.id})
+              </option>
+            ))}
+          </select>
+          <small>İsteğe bağlı · Tümü bütün grupları kapsar</small>
+        </div>
+        <div className="fk-field">
+          <label htmlFor="fk-band">Fiyat bandı</label>
+          <select
+            id="fk-band"
+            value={priceGroupId}
+            disabled={running}
+            onChange={(event) => {
+              const nextBand = event.target.value
+              setPriceGroupId(nextBand)
+              resetRunView()
+              syncFiltersToUrl({ bandId: nextBand })
+            }}
+          >
+            <option value="">Tümü</option>
+            {bandsForSelect.map((band) => (
+              <option key={band.value} value={band.value}>
+                {band.label}
+              </option>
+            ))}
+          </select>
+          <small>İsteğe bağlı · Tümü bütün bantları kapsar</small>
         </div>
         <button type="button" className="fk-btn" disabled={!canCompare} onClick={startCompare}>
           Karşılaştır
